@@ -383,11 +383,10 @@ let currentUser = null; // logged in user name
 function renderLoginScreen(){
   const sel=document.getElementById('login-user-select');
   if(!sel) return;
-  // Always show at least USERS — update with real team names after sync
   const names=_team.length?_team:USERS.map(u=>u.name);
-  // Keep current selection index
   const curVal=sel.value;
-  sel.innerHTML=names.map((name,i)=>`<option value="${i}"${curVal==i?' selected':''}>${name}</option>`).join('');
+  sel.innerHTML=names.map((name,i)=>`<option value="${i}"${curVal==i?' selected':''}>${name}</option>`).join('')+
+    `<option value="admin"${curVal==='admin'?' selected':''}>Admin</option>`;
 }
 
 function checkLogin(){
