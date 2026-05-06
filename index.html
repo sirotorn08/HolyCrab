@@ -117,7 +117,17 @@ textarea{resize:vertical;min-height:50px;line-height:1.5}
 .cost-row span:first-child{color:#73726c}
 .ptrow{display:grid;grid-template-columns:1fr 40px 56px 56px;gap:3px;padding:7px 9px;border-radius:9px;background:#f5f5f0;margin-bottom:4px;font-size:12px;align-items:center}
 .purchase-card{background:#f5f5f0;border-radius:11px;padding:11px 12px;margin-bottom:8px}
-/* SYNC STATUS BAR */
+/* PASSWORD SCREEN */
+.pw-screen{position:fixed;inset:0;background:#f5f5f0;z-index:99999;display:flex;align-items:center;justify-content:center;padding:20px}
+.pw-card{background:#fff;border-radius:20px;padding:32px 24px;width:100%;max-width:360px;box-shadow:0 4px 24px rgba(0,0,0,.1);text-align:center}
+.pw-logo{font-size:48px;margin-bottom:8px}
+.pw-title{font-size:22px;font-weight:700;color:#1a1a18;margin-bottom:4px}
+.pw-sub{font-size:13px;color:#73726c;margin-bottom:24px}
+.pw-input{width:100%;padding:12px 14px;border:1.5px solid #d3d1c7;border-radius:11px;font-size:16px;text-align:center;letter-spacing:2px;font-family:inherit;outline:none;margin-bottom:12px}
+.pw-input:focus{border-color:#378ADD;box-shadow:0 0 0 3px rgba(55,138,221,.12)}
+.pw-btn{width:100%;padding:13px;background:#1a1a18;color:#fff;border:none;border-radius:11px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit}
+.pw-btn:active{background:#3d3d3a}
+.pw-error{font-size:13px;color:#a32d2d;margin-top:8px;min-height:18px}
 .sync-bar{display:flex;align-items:center;justify-content:space-between;background:#fff;border-radius:11px;padding:9px 13px;margin-bottom:10px;box-shadow:0 1px 3px rgba(0,0,0,.06);max-width:520px;margin-left:auto;margin-right:auto}
 .sync-status{display:flex;align-items:center;gap:7px;font-size:12px;font-weight:500}
 .sync-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
@@ -129,6 +139,19 @@ textarea{resize:vertical;min-height:50px;line-height:1.5}
 </style>
 </head>
 <body>
+
+<!-- PASSWORD SCREEN -->
+<div class="pw-screen" id="pw-screen">
+  <div class="pw-card">
+    <div class="pw-logo">🦀</div>
+    <div class="pw-title">Holy Crab</div>
+    <div class="pw-sub">Enter password to access</div>
+    <input type="password" class="pw-input" id="pw-input" placeholder="••••••••"
+      onkeydown="if(event.key==='Enter')checkPw()">
+    <button class="pw-btn" onclick="checkPw()">Enter</button>
+    <div class="pw-error" id="pw-error"></div>
+  </div>
+</div>
 
 <!-- SYNC STATUS -->
 <div class="sync-bar" id="sync-bar">
@@ -305,8 +328,54 @@ textarea{resize:vertical;min-height:50px;line-height:1.5}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <script>
 // ============================================================
-// CONFIG — Google Apps Script URL
+// PASSWORD & ACCESS LOG
 // ============================================================
+const APP_PASSWORD = 'HolyC2026';
+
+function checkPw(){
+  const val=document.getElementById('pw-input').value;
+  const err=document.getElementById('pw-error');
+  if(val===APP_PASSWORD){
+    // Save session
+    sessionStorage.setItem('hc_auth','1');
+    document.getElementById('pw-screen').style.display='none';
+    // Log access to Google Sheets
+    const team=getTeam();
+    logAccess('login');
+    // Start app
+    syncNow();
+  } else {
+    err.textContent='Wrong password. Try again.';
+    document.getElementById('pw-input').value='';
+    document.getElementById('pw-input').focus();
+    setTimeout(()=>err.textContent='',3000);
+  }
+}
+
+async function logAccess(action){
+  try {
+    const now=new Date();
+    const entry={
+      type:'access_log',
+      action,
+      time:now.toISOString(),
+      localTime:now.toLocaleString('th-TH'),
+      userAgent:navigator.userAgent.substring(0,80)
+    };
+    await gasPost({action:'saveAccessLog',data:entry});
+  } catch(e){} // silent fail — don't block app
+}
+
+// Check session on load — skip password if already authenticated this session
+function initAuth(){
+  if(sessionStorage.getItem('hc_auth')==='1'){
+    document.getElementById('pw-screen').style.display='none';
+    syncNow();
+  } else {
+    // Show password screen, don't sync yet
+    document.getElementById('pw-input').focus();
+  }
+}
 const GAS_URL = 'https://script.google.com/macros/s/AKfycbxGmHcyplZna5vDoJN-pVpCdms7DTRUuLJMzL5LuzBdUiJyMAJZwIAPoN2zu_IiEjNG/exec';
 
 // ============================================================
@@ -1187,8 +1256,8 @@ renderRecBtns();
 renderOrdersHTML();
 renderOpCostsList();
 populateMonthSelects();
-// Initial sync on load
-syncNow();
+// Auth check on load
+initAuth();
 </script>
 </body>
 </html>
