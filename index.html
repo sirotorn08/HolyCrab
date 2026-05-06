@@ -427,13 +427,21 @@ function checkLogin(){
 }
 
 function loginSuccess(name, idx){
+  // Hide login screen immediately
   sessionStorage.setItem('hc_auth', name);
+  currentUser = name;
   document.getElementById('pw-screen').style.display='none';
+  // Auto-select recorder
   if(idx>=0){selRec=idx;renderRecBtns();}
+  // Show admin panel if admin
+  updateAdminVisibility();
+  // Log and sync in background — don't block login
   logAccess('login:'+name);
   syncNow().then(()=>{
     if(idx>=0){selRec=idx;renderRecBtns();}
     updateAdminVisibility();
+  }).catch(e=>{
+    console.warn('Sync after login failed:', e);
   });
 }
 
@@ -536,14 +544,15 @@ function initAuth(){
   if(saved){
     currentUser=saved;
     document.getElementById('pw-screen').style.display='none';
-    // Restore recorder selection
-    const team=_team.length?_team:USERS.map(u=>u.name);
-    const idx=team.indexOf(saved);
+    updateAdminVisibility();
+    // Restore recorder
+    const idx=_users.findIndex(u=>u.name===saved);
     if(idx>=0){selRec=idx;renderRecBtns();}
     syncNow().then(()=>{
-      const t=getTeam();const i=t.indexOf(saved);
+      const i=_users.findIndex(u=>u.name===saved);
       if(i>=0){selRec=i;renderRecBtns();}
-    });
+      updateAdminVisibility();
+    }).catch(e=>console.warn('Sync on init failed:',e));
   } else {
     document.getElementById('pw-input').focus();
   }
