@@ -392,9 +392,12 @@ function renderLoginScreen(){
 
 function checkLogin(){
   const err=document.getElementById('pw-error');
-  const pw=document.getElementById('pw-input').value;
+  const pw=document.getElementById('pw-input').value.trim();
   const selEl=document.getElementById('login-user-select');
   const selVal=selEl.value;
+
+  // Debug info
+  console.log('Login attempt — selected:',selVal,'pw length:',pw.length,'_users:',_users.length);
 
   // Admin selected from dropdown
   if(selVal==='admin'){
@@ -402,27 +405,27 @@ function checkLogin(){
       currentUser='Admin';
       loginSuccess('Admin',-1);
     } else {
-      err.textContent='Wrong admin password.';
-      document.getElementById('pw-input').value='';
-      document.getElementById('pw-input').focus();
-      setTimeout(()=>err.textContent='',3000);
+      err.textContent='Wrong admin password. Got: "'+pw+'" expected length: '+ADMIN_PASSWORD.length;
+      setTimeout(()=>err.textContent='',5000);
     }
     return;
   }
 
   // Regular user
   const idx=parseInt(selVal);
-  const userName=_users[idx]?_users[idx].name:(USERS[idx]?USERS[idx].name:`User ${idx+1}`);
+  const userName=_users[idx]?_users[idx].name:(USERS[idx]?USERS[idx].name:'User');
   const userPw=_users[idx]?_users[idx].password:(USERS[idx]?USERS[idx].password:'HolyC2026');
+
+  console.log('Checking user:',userName,'stored pw length:',userPw.length,'entered pw length:',pw.length);
 
   if(pw===userPw){
     currentUser=userName;
     loginSuccess(userName,idx);
   } else {
-    err.textContent='Wrong password. Try again.';
+    err.textContent='Wrong password for '+userName+'. Entered: "'+pw+'"';
     document.getElementById('pw-input').value='';
     document.getElementById('pw-input').focus();
-    setTimeout(()=>err.textContent='',3000);
+    setTimeout(()=>err.textContent='',5000);
   }
 }
 
@@ -1007,6 +1010,8 @@ function renderFileThumb(src, name, onDel){
 }
 
 function getOpCosts(){return OP_IDS.reduce((obj,f)=>{obj[f.id]=parseFloat(document.getElementById(f.id)?.value)||0;return obj;},{});}
+
+function previewDay(){
   const allItems=orders.flatMap(o=>o.items);
   const totalRev=allItems.reduce((s,i)=>(parseFloat(i.qty)||0)*(parseFloat(i.sp)||0)+s,0);
   const totalProdCost=allItems.reduce((s,i)=>(parseFloat(i.qty)||0)*(parseFloat(i.cp)||0)+s,0);
