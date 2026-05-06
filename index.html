@@ -143,12 +143,17 @@ textarea{resize:vertical;min-height:50px;line-height:1.5}
 <!-- PASSWORD SCREEN -->
 <div class="pw-screen" id="pw-screen">
   <div class="pw-card">
-    <div class="pw-logo">🦀</div>
+    <div class="pw-logo"><svg width="56" height="56" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg"><ellipse cx="32" cy="36" rx="18" ry="13" fill="#e8366a"/><ellipse cx="32" cy="34" rx="14" ry="10" fill="#ff5c8a"/><circle cx="24" cy="30" r="3" fill="white"/><circle cx="40" cy="30" r="3" fill="white"/><circle cx="25" cy="30" r="1.5" fill="#1a1a18"/><circle cx="41" cy="30" r="1.5" fill="#1a1a18"/><path d="M27 38 Q32 42 37 38" stroke="white" stroke-width="1.5" fill="none" stroke-linecap="round"/><rect x="14" y="32" width="5" height="2.5" rx="1.2" fill="#e8366a"/><rect x="45" y="32" width="5" height="2.5" rx="1.2" fill="#e8366a"/><path d="M14 33 Q8 28 6 22 Q10 24 14 30" fill="#e8366a"/><path d="M50 33 Q56 28 58 22 Q54 24 50 30" fill="#e8366a"/><path d="M18 40 Q12 46 10 52" stroke="#e8366a" stroke-width="3" stroke-linecap="round"/><path d="M22 43 Q18 50 17 56" stroke="#e8366a" stroke-width="3" stroke-linecap="round"/><path d="M46 40 Q52 46 54 52" stroke="#e8366a" stroke-width="3" stroke-linecap="round"/><path d="M42 43 Q46 50 47 56" stroke="#e8366a" stroke-width="3" stroke-linecap="round"/></svg></div>
     <div class="pw-title">Holy Crab</div>
-    <div class="pw-sub">Enter password to access</div>
-    <input type="password" class="pw-input" id="pw-input" placeholder="••••••••"
-      onkeydown="if(event.key==='Enter')checkPw()">
-    <button class="pw-btn" onclick="checkPw()">Enter</button>
+    <div class="pw-sub">Select your name and enter your password</div>
+    <select id="login-user-select" style="width:100%;padding:11px 12px;border:1.5px solid #d3d1c7;border-radius:11px;font-size:15px;margin-bottom:10px;font-family:inherit;background:#fff;color:#1a1a18;outline:none">
+      <option value="0">Jan</option>
+      <option value="1">Rit</option>
+      <option value="admin">Admin</option>
+    </select>
+    <input type="password" class="pw-input" id="pw-input" placeholder="Password"
+      onkeydown="if(event.key==='Enter')checkLogin()">
+    <button class="pw-btn" onclick="checkLogin()">Enter</button>
     <div class="pw-error" id="pw-error"></div>
   </div>
 </div>
@@ -212,8 +217,8 @@ textarea{resize:vertical;min-height:50px;line-height:1.5}
       <div style="margin-bottom:8px"><div style="font-size:11px;color:#73726c;margin-bottom:3px">โน้ต</div><textarea id="pur-note" placeholder="คุณภาพ, หมายเหตุ..."></textarea></div>
       <div style="background:#fff;border-radius:9px;padding:9px 10px;border:1.5px dashed #d3d1c7">
         <div style="font-size:11px;font-weight:600;color:#73726c;margin-bottom:6px">📎 ใบเสร็จ / หลักฐาน</div>
-        <button class="upload-btn" onclick="document.getElementById('img_pur').click()">📷 แนบรูปภาพ</button>
-        <input type="file" id="img_pur" accept="image/*" multiple onchange="handlePurImgs(this)">
+        <button class="upload-btn" onclick="document.getElementById('img_pur').click()">📎 แนบไฟล์ / รูปภาพ</button>
+        <input type="file" id="img_pur" accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.csv,.txt,.png,.jpg,.jpeg" multiple onchange="handlePurImgs(this)">
         <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:4px" id="prev_pur"></div>
       </div>
     </div>
@@ -227,6 +232,25 @@ textarea{resize:vertical;min-height:50px;line-height:1.5}
 
 <!-- PRODUCTS -->
 <div class="page" id="page-products">
+  <!-- ADMIN PANEL — only visible when logged in as Admin -->
+  <div class="card" id="admin-panel" style="display:none;border:2px solid #1a1a18">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+      <div class="card-title" style="margin-bottom:0">🔐 Admin — User Management</div>
+      <span style="font-size:10px;background:#1a1a18;color:#fff;padding:3px 8px;border-radius:20px">ADMIN ONLY</span>
+    </div>
+    <div id="user-list"></div>
+    <div style="background:#f8f7f4;border-radius:11px;padding:11px 12px;margin-top:10px">
+      <div style="font-size:11px;font-weight:700;color:#73726c;text-transform:uppercase;letter-spacing:.05em;margin-bottom:9px">+ Add New User</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-bottom:7px">
+        <div><div style="font-size:10px;color:#73726c;margin-bottom:3px">Name</div>
+          <input type="text" id="new-user-name" placeholder="e.g. John"></div>
+        <div><div style="font-size:10px;color:#73726c;margin-bottom:3px">Password</div>
+          <input type="password" id="new-user-pw" placeholder="Password"></div>
+      </div>
+      <button class="btn btn-black" style="margin-top:0" onclick="addUser()">+ Add User</button>
+    </div>
+    <button class="btn btn-blue" onclick="syncUsers()" style="margin-top:8px">☁️ Sync Users to All Devices</button>
+  </div>
   <div class="card">
     <div class="card-title">ชื่อผู้บันทึก — Recorder names</div>
     <div id="team-list"></div>
@@ -294,6 +318,21 @@ textarea{resize:vertical;min-height:50px;line-height:1.5}
       <button class="btn-icon" onclick="exportOpsCSV()">📊 Costs CSV</button>
       <button class="btn-icon" onclick="exportPurchaseCSV()">🧾 Purchase CSV</button>
     </div>
+    <div class="action-row">
+      <button class="btn-icon" style="flex:1;justify-content:center;background:#eaf3de;border-color:#c0dd97;color:#3b6d11" onclick="showAttachPanel()">📎 Download Attachments</button>
+    </div>
+    <!-- Attachment download panel -->
+    <div id="attach-panel" style="display:none;background:#f8f7f4;border-radius:11px;padding:12px;margin-bottom:10px">
+      <div style="font-size:12px;font-weight:600;color:#1a1a18;margin-bottom:8px">📎 Download Attachments</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-bottom:10px">
+        <div><div style="font-size:11px;color:#73726c;margin-bottom:3px">From date</div>
+          <input type="date" id="attach-from" onchange="renderAttachList()"></div>
+        <div><div style="font-size:11px;color:#73726c;margin-bottom:3px">To date</div>
+          <input type="date" id="attach-to" onchange="renderAttachList()"></div>
+      </div>
+      <div id="attach-file-list"></div>
+      <button class="btn btn-gray" style="margin-top:8px" onclick="document.getElementById('attach-panel').style.display='none'">Close</button>
+    </div>
     <div class="card-title">ประวัติรายวัน</div>
     <div class="msr-row"><select id="hist-month" onchange="renderHistory()"></select></div>
     <div id="hist-entries"></div>
@@ -328,22 +367,57 @@ textarea{resize:vertical;min-height:50px;line-height:1.5}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <script>
 // ============================================================
-// PASSWORD & ACCESS LOG
+// INDIVIDUAL LOGIN SYSTEM
 // ============================================================
-const APP_PASSWORD = 'HolyC2026';
+// Each user has their own name + password
+// Add/remove users here — name must match team names exactly
+const USERS = [
+  { name: 'Jan', password: 'HolyC2026' },
+  { name: 'Rit', password: 'HolyC2026' },
+];
+// Admin password — can access everything, shown as "Admin"
+const ADMIN_PASSWORD = 'HolyCrabAdmin2026';
 
-function checkPw(){
-  const val=document.getElementById('pw-input').value;
+let currentUser = null; // logged in user name
+
+function renderLoginScreen(){
+  const sel=document.getElementById('login-user-select');
+  if(!sel) return;
+  // Always show at least USERS — update with real team names after sync
+  const names=_team.length?_team:USERS.map(u=>u.name);
+  // Keep current selection index
+  const curVal=sel.value;
+  sel.innerHTML=names.map((name,i)=>`<option value="${i}"${curVal==i?' selected':''}>${name}</option>`).join('');
+}
+
+function checkLogin(){
   const err=document.getElementById('pw-error');
-  if(val===APP_PASSWORD){
-    // Save session
-    sessionStorage.setItem('hc_auth','1');
-    document.getElementById('pw-screen').style.display='none';
-    // Log access to Google Sheets
-    const team=getTeam();
-    logAccess('login');
-    // Start app
-    syncNow();
+  const pw=document.getElementById('pw-input').value;
+  const selEl=document.getElementById('login-user-select');
+  const selVal=selEl.value;
+
+  // Admin selected from dropdown
+  if(selVal==='admin'){
+    if(pw===ADMIN_PASSWORD){
+      currentUser='Admin';
+      loginSuccess('Admin',-1);
+    } else {
+      err.textContent='Wrong admin password.';
+      document.getElementById('pw-input').value='';
+      document.getElementById('pw-input').focus();
+      setTimeout(()=>err.textContent='',3000);
+    }
+    return;
+  }
+
+  // Regular user
+  const idx=parseInt(selVal);
+  const userName=_users[idx]?_users[idx].name:(USERS[idx]?USERS[idx].name:`User ${idx+1}`);
+  const userPw=_users[idx]?_users[idx].password:(USERS[idx]?USERS[idx].password:'HolyC2026');
+
+  if(pw===userPw){
+    currentUser=userName;
+    loginSuccess(userName,idx);
   } else {
     err.textContent='Wrong password. Try again.';
     document.getElementById('pw-input').value='';
@@ -352,27 +426,125 @@ function checkPw(){
   }
 }
 
+function loginSuccess(name, idx){
+  sessionStorage.setItem('hc_auth', name);
+  document.getElementById('pw-screen').style.display='none';
+  if(idx>=0){selRec=idx;renderRecBtns();}
+  logAccess('login:'+name);
+  syncNow().then(()=>{
+    if(idx>=0){selRec=idx;renderRecBtns();}
+    updateAdminVisibility();
+  });
+}
+
+// ============================================================
+// USER MANAGEMENT (Admin only)
+// ============================================================
+let _users=JSON.parse(JSON.stringify(USERS));
+
+function getUsers(){return _users;}
+
+function updateAdminVisibility(){
+  const panel=document.getElementById('admin-panel');
+  if(panel)panel.style.display=(currentUser==='Admin')?'block':'none';
+}
+
+function renderUserList(){
+  const el=document.getElementById('user-list');if(!el)return;
+  const users=getUsers();
+  if(!users.length){el.innerHTML='<div style="font-size:13px;color:#b4b2a9;padding:8px">No users</div>';return;}
+  el.innerHTML=users.map((u,i)=>`
+    <div style="display:flex;align-items:center;gap:8px;padding:9px 10px;background:#f5f5f0;border-radius:9px;margin-bottom:6px">
+      <div style="flex:1">
+        <div style="font-size:13px;font-weight:600;color:#1a1a18">${u.name}</div>
+        <div style="font-size:11px;color:#73726c;margin-top:1px">Password: ${'•'.repeat(u.password.length)}</div>
+      </div>
+      <button onclick="changeUserPw(${i})" style="background:#e8f1fb;border:1.5px solid #b3cef0;border-radius:8px;padding:5px 9px;font-size:11px;font-weight:600;cursor:pointer;color:#1a56a4">🔑</button>
+      <button onclick="removeUser(${i})" style="background:#fcebeb;border:1.5px solid #f7c1c1;border-radius:8px;padding:5px 9px;font-size:11px;font-weight:600;cursor:pointer;color:#a32d2d">×</button>
+    </div>`).join('');
+}
+
+function addUser(){
+  const name=document.getElementById('new-user-name').value.trim();
+  const pw=document.getElementById('new-user-pw').value.trim();
+  if(!name){showToast('Please enter a name');return;}
+  if(!pw){showToast('Please enter a password');return;}
+  if(_users.find(u=>u.name.toLowerCase()===name.toLowerCase())){showToast('Name already exists');return;}
+  _users.push({name,password:pw});
+  document.getElementById('new-user-name').value='';
+  document.getElementById('new-user-pw').value='';
+  renderUserList();updateLoginDropdown();
+  showToast(`✅ Added ${name} — tap Sync to save`);
+}
+
+function removeUser(i){
+  if(!confirm(`Remove user "${_users[i].name}"?`))return;
+  _users.splice(i,1);
+  renderUserList();updateLoginDropdown();
+  showToast('Removed — tap Sync to save');
+}
+
+function changeUserPw(i){
+  const newPw=prompt(`New password for "${_users[i].name}":`);
+  if(!newPw||!newPw.trim())return;
+  _users[i].password=newPw.trim();
+  renderUserList();
+  showToast(`✅ Password changed — tap Sync to save`);
+}
+
+function updateLoginDropdown(){
+  const sel=document.getElementById('login-user-select');if(!sel)return;
+  sel.innerHTML=_users.map((u,i)=>`<option value="${i}">${u.name}</option>`).join('')+
+    `<option value="admin">Admin</option>`;
+}
+
+async function syncUsers(){
+  if(currentUser!=='Admin'){showToast('Admin only');return;}
+  setSyncStatus('syncing','Syncing users...');
+  try{
+    await gasPost({action:'saveUsers',data:_users});
+    _team=_users.map(u=>u.name);
+    await gasPost({action:'saveTeam',data:_team.map(n=>({name:n}))});
+    setSyncStatus('ok','Synced');
+    showToast('✅ Users synced to all devices!');
+    renderTeamList();updateLoginDropdown();
+  }catch(e){setSyncStatus('err','Sync failed');showToast('⚠️ Sync failed');}
+}
+
+function loadUsersFromSync(data){
+  if(data.users&&data.users.length){
+    _users=data.users;
+    updateLoginDropdown();
+    renderUserList();
+  }
+}
+
 async function logAccess(action){
-  try {
+  try{
     const now=new Date();
-    const entry={
-      type:'access_log',
-      action,
+    await gasPost({action:'saveAccessLog',data:{
+      type:'access_log',action,
       time:now.toISOString(),
       localTime:now.toLocaleString('th-TH'),
       userAgent:navigator.userAgent.substring(0,80)
-    };
-    await gasPost({action:'saveAccessLog',data:entry});
-  } catch(e){} // silent fail — don't block app
+    }});
+  }catch(e){}
 }
 
-// Check session on load — skip password if already authenticated this session
 function initAuth(){
-  if(sessionStorage.getItem('hc_auth')==='1'){
+  const saved=sessionStorage.getItem('hc_auth');
+  if(saved){
+    currentUser=saved;
     document.getElementById('pw-screen').style.display='none';
-    syncNow();
+    // Restore recorder selection
+    const team=_team.length?_team:USERS.map(u=>u.name);
+    const idx=team.indexOf(saved);
+    if(idx>=0){selRec=idx;renderRecBtns();}
+    syncNow().then(()=>{
+      const t=getTeam();const i=t.indexOf(saved);
+      if(i>=0){selRec=i;renderRecBtns();}
+    });
   } else {
-    // Show password screen, don't sync yet
     document.getElementById('pw-input').focus();
   }
 }
@@ -469,6 +641,8 @@ async function syncNow(){
     _purchases= (data.purchases||[]).filter(Boolean);
     _products = (data.products||[]).filter(Boolean);
     _team     = (data.team||[]).filter(Boolean);
+    // Load users if available
+    if(data.users&&data.users.length) loadUsersFromSync(data);
     lastSync  = new Date();
     setSyncStatus('ok','ซิงค์แล้ว · '+lastSync.toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'}));
     const active=document.querySelector('.page.active');
@@ -503,7 +677,7 @@ function nav(p){
   document.getElementById('page-'+p).classList.add('active');
   const idx={record:0,purchase:1,products:2,customers:3,dashboard:4,history:5}[p];
   document.querySelectorAll('.topnav button')[idx].classList.add('active');
-  if(p==='products'){renderTeamList();renderProdSetup();}
+  if(p==='products'){renderTeamList();renderProdSetup();updateAdminVisibility();renderUserList();}
   if(p==='record'){renderRecBtns();renderOrders();renderOpCostsList();}
   if(p==='purchase'){initPurDate();renderPurchaseList();}
   if(p==='customers'){populateFilterProd();renderCustomers();}
@@ -626,11 +800,7 @@ function renderOpCostsList(){
   const el=document.getElementById('op-costs-list');if(!el)return;
   el.innerHTML=OP_IDS.map(f=>{
     const imgs=opImgs[f.id]||[];
-    const thumbs=imgs.map((src,i)=>`
-      <div class="img-thumb" style="width:58px;height:58px">
-        <img src="${src}" onclick="openLB('${src}')">
-        <button class="del-img" onclick="delOpImg('${f.id}',${i})">×</button>
-      </div>`).join('');
+    const thumbs=imgs.map((item,i)=>renderFileThumb(item.src||item,item.name||'',`delOpImg('${f.id}',${i})`)).join('');
     return`<div style="background:#fff;border-radius:10px;padding:10px 11px;margin-bottom:8px;border:1px solid #eeecec">
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
         <div style="flex:1">
@@ -642,9 +812,9 @@ function renderOpCostsList(){
           oninput="previewDay()">
       </div>
       <button class="upload-btn" onclick="document.getElementById('opfile_${f.id}').click()">
-        📷 แนบหลักฐาน${imgs.length>0?` <span style="background:#378ADD;color:#fff;border-radius:10px;padding:1px 7px;font-size:11px;margin-left:4px">${imgs.length} รูป</span>`:''}
+        📎 แนบไฟล์/หลักฐาน${imgs.length>0?` <span style="background:#378ADD;color:#fff;border-radius:10px;padding:1px 7px;font-size:11px;margin-left:4px">${imgs.length} รูป</span>`:''}
       </button>
-      <input type="file" id="opfile_${f.id}" accept="image/*" multiple onchange="handleOpImg('${f.id}',this)">
+      <input type="file" id="opfile_${f.id}" accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.csv,.txt,.png,.jpg,.jpeg" multiple onchange="handleOpImg('${f.id}',this)">
       ${thumbs?`<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:6px">${thumbs}</div>`:''}
       <input type="text" id="opnote_${f.id}" value="${opNotes[f.id]||''}"
         placeholder="โน้ต / เลขใบเสร็จ..."
@@ -656,7 +826,7 @@ function renderOpCostsList(){
 function handleOpImg(fid,input){
   Array.from(input.files).forEach(f=>{
     const r=new FileReader();
-    r.onload=e=>{if(!opImgs[fid])opImgs[fid]=[];opImgs[fid].push(e.target.result);renderOpCostsList();};
+    r.onload=e=>{if(!opImgs[fid])opImgs[fid]=[];opImgs[fid].push({src:e.target.result,name:f.name});renderOpCostsList();};
     r.readAsDataURL(f);
   });input.value='';
 }
@@ -719,9 +889,9 @@ function renderOrdersHTML(){
         <div style="margin-top:8px;background:#f8f7f4;border-radius:9px;padding:9px 10px">
           <div style="font-size:10px;font-weight:700;color:#73726c;margin-bottom:6px">📎 หลักฐานออเดอร์ (สลิป, ใบส่ง)</div>
           <button class="upload-btn" onclick="document.getElementById('img_order_${order.id}').click()">
-            📷 แนบรูป${orderImgs[order.id]&&orderImgs[order.id].length?` <span style="background:#378ADD;color:#fff;border-radius:10px;padding:1px 7px;font-size:11px;margin-left:4px">${orderImgs[order.id].length} รูป</span>`:''}
+            📎 แนบไฟล์/รูป${orderImgs[order.id]&&orderImgs[order.id].length?` <span style="background:#378ADD;color:#fff;border-radius:10px;padding:1px 7px;font-size:11px;margin-left:4px">${orderImgs[order.id].length} รูป</span>`:''}
           </button>
-          <input type="file" id="img_order_${order.id}" accept="image/*" multiple onchange="handleOrderImg('${order.id}',this)">
+          <input type="file" id="img_order_${order.id}" accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.csv,.txt,.png,.jpg,.jpeg" multiple onchange="handleOrderImg('${order.id}',this)">
           <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:4px" id="prev_order_${order.id}"></div>
           <textarea id="note_order_${order.id}" rows="2" placeholder="โน้ตหลักฐาน เช่น โอนแล้ว 14:30..." style="margin-top:6px">${order.evidNote||''}</textarea>
         </div>
@@ -783,14 +953,51 @@ function addItem(oid){const o=orders.find(x=>x.id===oid);if(o){o.items.push({iid
 function removeItem(oid,iid){const o=orders.find(x=>x.id===oid);if(!o)return;if(o.items.length<=1){showToast('ต้องมีอย่างน้อย 1 รายการ');return;}o.items=o.items.filter(i=>i.iid!==iid);renderOrdersHTML();previewDay();}
 function updateItemProd(oid,iid,pid){const o=orders.find(x=>x.id===oid);if(!o)return;const item=o.items.find(i=>i.iid===iid);if(!item)return;const p=getProds().find(x=>x.id===pid);item.prodId=pid;item.sp=p?p.sp:'';item.cp=p?p.cp:'';renderOrdersHTML();previewDay();}
 function updateItemVal(oid,iid,key,val){const o=orders.find(x=>x.id===oid);if(!o)return;const item=o.items.find(i=>i.iid===iid);if(!item)return;item[key]=val;renderOrdersHTML();previewDay();}
-function handleOrderImg(oid,input){Array.from(input.files).forEach(f=>{const r=new FileReader();r.onload=e=>{if(!orderImgs[oid])orderImgs[oid]=[];orderImgs[oid].push(e.target.result);renderOrderImgPrev(oid);};r.readAsDataURL(f);});input.value='';}
-function renderOrderImgPrev(oid){const el=document.getElementById('prev_order_'+oid);if(!el)return;const imgs=orderImgs[oid]||[];el.innerHTML=imgs.map((src,i)=>`<div class="img-thumb" style="width:58px;height:58px"><img src="${src}" onclick="openLB('${src}')"><button class="del-img" onclick="orderImgs['${oid}'].splice(${i},1);renderOrderImgPrev('${oid}')">×</button></div>`).join('');}
-function handlePurImgs(input){Array.from(input.files).forEach(f=>{const r=new FileReader();r.onload=e=>{purImgs.push(e.target.result);renderPurPrev();};r.readAsDataURL(f);});input.value='';}
-function renderPurPrev(){document.getElementById('prev_pur').innerHTML=purImgs.map((src,i)=>`<div class="img-thumb" style="width:58px;height:58px"><img src="${src}" onclick="openLB('${src}')"><button class="del-img" onclick="purImgs.splice(${i},1);renderPurPrev()">×</button></div>`).join('');}
+function handleOrderImg(oid,input){Array.from(input.files).forEach(f=>{const r=new FileReader();r.onload=e=>{if(!orderImgs[oid])orderImgs[oid]=[];orderImgs[oid].push({src:e.target.result,name:f.name});renderOrderImgPrev(oid);};r.readAsDataURL(f);});input.value='';}
+function renderOrderImgPrev(oid){const el=document.getElementById('prev_order_'+oid);if(!el)return;const imgs=orderImgs[oid]||[];el.innerHTML=imgs.map((f,i)=>renderFileThumb(f.src||f,f.name||'',`orderImgs['${oid}'].splice(${i},1);renderOrderImgPrev('${oid}')`)).join('');}
+function handlePurImgs(input){Array.from(input.files).forEach(f=>{const r=new FileReader();r.onload=e=>{purImgs.push({src:e.target.result,name:f.name});renderPurPrev();};r.readAsDataURL(f);});input.value='';}
+function renderPurPrev(){document.getElementById('prev_pur').innerHTML=purImgs.map((f,i)=>renderFileThumb(f.src||f,f.name||'',`purImgs.splice(${i},1);renderPurPrev()`)).join('');}
+
+function getFileIcon(name){
+  const ext=(name||'').split('.').pop().toLowerCase();
+  if(['jpg','jpeg','png','gif','webp'].includes(ext)) return null; // image — show preview
+  if(ext==='pdf') return '📄';
+  if(['doc','docx'].includes(ext)) return '📝';
+  if(['xls','xlsx','csv'].includes(ext)) return '📊';
+  if(['txt'].includes(ext)) return '📃';
+  return '📁';
+}
+
+function fileToDataUrl(file){
+  return new Promise(resolve=>{
+    const r=new FileReader();
+    r.onload=e=>resolve(e.target.result);
+    r.readAsDataURL(file);
+  });
+}
+
+function renderFileThumb(src, name, onDel){
+  const icon=getFileIcon(name);
+  if(!icon){
+    // image — show preview
+    return `<div class="img-thumb" style="width:58px;height:58px">
+      <img src="${src}" onclick="openLB('${src}')">
+      <button class="del-img" onclick="${onDel}">×</button>
+    </div>`;
+  } else {
+    // non-image — show icon + filename
+    const shortName=(name||'file').substring(0,10)+(name&&name.length>10?'...':'');
+    return `<div style="position:relative;width:64px;text-align:center;flex-shrink:0">
+      <div style="width:58px;height:58px;background:#f1efe8;border-radius:8px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:22px;border:1.5px solid #e8e6e0;cursor:default">
+        ${icon}
+        <div style="font-size:9px;color:#73726c;margin-top:2px;word-break:break-all;padding:0 2px">${shortName}</div>
+      </div>
+      <button class="del-img" style="top:2px;right:3px" onclick="${onDel}">×</button>
+    </div>`;
+  }
+}
 
 function getOpCosts(){return OP_IDS.reduce((obj,f)=>{obj[f.id]=parseFloat(document.getElementById(f.id)?.value)||0;return obj;},{});}
-
-function previewDay(){
   const allItems=orders.flatMap(o=>o.items);
   const totalRev=allItems.reduce((s,i)=>(parseFloat(i.qty)||0)*(parseFloat(i.sp)||0)+s,0);
   const totalProdCost=allItems.reduce((s,i)=>(parseFloat(i.qty)||0)*(parseFloat(i.cp)||0)+s,0);
@@ -917,7 +1124,7 @@ function renderPurchaseList(){
         </div>
       </div>
       ${p.note?`<div style="font-size:12px;color:#73726c;margin-bottom:5px">📝 ${p.note}</div>`:''}
-      ${p.imgs&&p.imgs.length?`<div class="thumb-row">${p.imgs.map(src=>`<img class="thumb" src="${src}" onclick="openLB('${src}')">`).join('')}</div>`:''}
+      ${p.imgs&&p.imgs.length?`<div class="thumb-row">${p.imgs.map(f=>`<img class="thumb" src="${f.src||f}" onclick="openLB('${f.src||f}')">`).join('')}</div>`:''}
     </div>`;
   }).join('');
 }
@@ -1102,13 +1309,13 @@ function renderHistory(){
             ${o.tracking?`<span style="color:#b4b2a9">${o.tracking}</span>`:''}
           </div>
           ${o.items.map(i=>`<div class="os-row"><span style="color:#1a1a18">${i.name}</span><span>${i.qty}${i.unit}</span><span>${fmt(i.rev)}</span><span>${fmt(i.cost)}</span><span class="${i.pl>=0?'pos':'neg'}">${fmt(i.pl)}</span></div>`).join('')}
-          ${(o.orderImgs||[]).length>0?`<div class="thumb-row">${(o.orderImgs||[]).map(src=>`<img class="thumb" src="${src}" onclick="openLB('${src}')">`).join('')}</div>`:''}
+          ${(o.orderImgs||[]).length>0?`<div class="thumb-row">${(o.orderImgs||[]).map(f=>`<img class="thumb" src="${f.src||f}" onclick="openLB('${f.src||f}')">`).join('')}</div>`:''}
           ${o.orderEvidNote?`<div class="note-box" style="font-size:11px">📎 ${o.orderEvidNote}</div>`:''}
         </div>`).join('')}
       </div>`:''}
       ${allOpImgs.length>0?`<div style="margin-top:6px;padding-top:6px;border-top:1px solid #f1efe8">
         <div style="font-size:10px;color:#b4b2a9;font-weight:600;margin-bottom:4px">หลักฐานต้นทุน</div>
-        <div class="thumb-row">${allOpImgs.map(src=>`<img class="thumb" src="${src}" onclick="openLB('${src}')">`).join('')}</div>
+        <div class="thumb-row">${allOpImgs.map(f=>`<img class="thumb" src="${f.src||f}" onclick="openLB('${f.src||f}')">`).join('')}</div>
       </div>`:''}
     </div>`;
   }).join('');
@@ -1221,8 +1428,149 @@ async function clearAll(){
 }
 
 // ============================================================
-// CSV EXPORT
+// ATTACHMENT DOWNLOAD
 // ============================================================
+function showAttachPanel(){
+  const panel=document.getElementById('attach-panel');
+  panel.style.display='block';
+  // Default date range — current month
+  const now=new Date();
+  const y=now.getFullYear();
+  const m=String(now.getMonth()+1).padStart(2,'0');
+  const d=String(now.getDate()).padStart(2,'0');
+  const firstDay=`${y}-${m}-01`;
+  const today=`${y}-${m}-${d}`;
+  document.getElementById('attach-from').value=firstDay;
+  document.getElementById('attach-to').value=today;
+  renderAttachList();
+}
+
+function getAllAttachments(from, to){
+  const files=[];
+  // From daily entries
+  _entries.forEach(e=>{
+    if(from&&e.date<from) return;
+    if(to&&e.date>to) return;
+    // Order evidence
+    (e.orders||[]).forEach((o,oi)=>{
+      (o.orderImgs||[]).forEach((f,fi)=>{
+        const src=f.src||f;
+        const name=f.name||`order${oi+1}_file${fi+1}`;
+        const ext=getExtFromSrc(src,name);
+        files.push({
+          src,
+          filename:`${e.date}_order${oi+1}_${o.custName||'customer'}_${name}`.replace(/[^a-zA-Z0-9._\-ก-๙]/g,'_'),
+          label:`${e.date} · Order ${oi+1}${o.custName?' ('+o.custName+')':''} · ${name}`,
+          type:'order',date:e.date
+        });
+      });
+    });
+    // Op cost evidence
+    const opEvid=e.opEvidImgs||{};
+    Object.entries(opEvid).forEach(([costId,imgs])=>{
+      const costLabel=OP_IDS.find(x=>x.id===costId)?.lbl||costId;
+      (imgs||[]).forEach((f,fi)=>{
+        const src=f.src||f;
+        const name=f.name||`receipt_${fi+1}`;
+        files.push({
+          src,
+          filename:`${e.date}_cost_${costLabel}_${name}`.replace(/[^a-zA-Z0-9._\-ก-๙]/g,'_'),
+          label:`${e.date} · Operating cost: ${costLabel} · ${name}`,
+          type:'opcost',date:e.date
+        });
+      });
+    });
+  });
+  // From purchases
+  _purchases.forEach(p=>{
+    if(from&&p.date<from) return;
+    if(to&&p.date>to) return;
+    (p.imgs||[]).forEach((f,fi)=>{
+      const src=f.src||f;
+      const name=f.name||`receipt_${fi+1}`;
+      files.push({
+        src,
+        filename:`${p.date}_purchase_${p.name||'item'}_${name}`.replace(/[^a-zA-Z0-9._\-ก-๙]/g,'_'),
+        label:`${p.date} · Purchase: ${p.name||'item'} · ${name}`,
+        type:'purchase',date:p.date
+      });
+    });
+  });
+  return files;
+}
+
+function getExtFromSrc(src, name){
+  // Try get ext from filename first
+  if(name&&name.includes('.')) return name.split('.').pop().toLowerCase();
+  // Try from base64 mime
+  if(src&&src.startsWith('data:')){
+    const mime=src.split(';')[0].replace('data:','');
+    const map={'image/jpeg':'jpg','image/png':'png','image/gif':'gif','application/pdf':'pdf',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document':'docx',
+      'application/msword':'doc',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet':'xlsx',
+      'application/vnd.ms-excel':'xls','text/csv':'csv','text/plain':'txt'};
+    return map[mime]||'bin';
+  }
+  return 'bin';
+}
+
+function renderAttachList(){
+  const from=document.getElementById('attach-from').value;
+  const to=document.getElementById('attach-to').value;
+  const files=getAllAttachments(from,to);
+  const el=document.getElementById('attach-file-list');
+  if(!files.length){
+    el.innerHTML=`<div class="empty" style="padding:14px">No attachments found in this date range</div>`;
+    return;
+  }
+  el.innerHTML=`
+    <div style="font-size:12px;color:#73726c;margin-bottom:8px">${files.length} file${files.length>1?'s':''} found — tap each to download individually</div>
+    ${files.map((f,i)=>{
+      const icon=getFileIcon(f.filename);
+      const typeColor=f.type==='order'?'#378ADD':f.type==='opcost'?'#EF9F27':'#1D9E75';
+      const typeLbl=f.type==='order'?'Order':f.type==='opcost'?'Cost':'Purchase';
+      return`<div style="display:flex;align-items:center;gap:10px;padding:9px 10px;background:#fff;border-radius:9px;margin-bottom:6px;border:1px solid #e8e6e0">
+        <div style="font-size:22px;flex-shrink:0">${icon||'🖼️'}</div>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:11px;font-weight:600;color:${typeColor};margin-bottom:2px">${typeLbl}</div>
+          <div style="font-size:12px;color:#1a1a18;word-break:break-all;line-height:1.4">${f.label}</div>
+        </div>
+        <button onclick="downloadAttachment(${i},${JSON.stringify(from)},${JSON.stringify(to)})"
+          style="background:#1a1a18;color:#fff;border:none;border-radius:8px;padding:7px 12px;font-size:12px;font-weight:600;cursor:pointer;flex-shrink:0">
+          ⬇️
+        </button>
+      </div>`;
+    }).join('')}
+    <button class="btn btn-black" style="margin-top:4px" onclick="downloadAllAttachments(${JSON.stringify(from)},${JSON.stringify(to)})">⬇️ Download All (${files.length} files)</button>
+  `;
+}
+
+function downloadAttachment(idx, from, to){
+  const files=getAllAttachments(from,to);
+  const f=files[idx];if(!f)return;
+  const ext=getExtFromSrc(f.src,f.filename);
+  const fname=f.filename.endsWith('.'+ext)?f.filename:f.filename+'.'+ext;
+  const a=document.createElement('a');
+  a.href=f.src;
+  a.download=fname;
+  a.click();
+}
+
+function downloadAllAttachments(from,to){
+  const files=getAllAttachments(from,to);
+  if(!files.length){showToast('No files to download');return;}
+  // Download one by one with small delay between each
+  showToast(`Downloading ${files.length} files...`);
+  files.forEach((f,i)=>{
+    setTimeout(()=>{
+      const ext=getExtFromSrc(f.src,f.filename);
+      const fname=f.filename.endsWith('.'+ext)?f.filename:f.filename+'.'+ext;
+      const a=document.createElement('a');
+      a.href=f.src;a.download=fname;a.click();
+    },i*400); // 400ms between each download
+  });
+}
 function dlCSV(rows,filename){
   const bom='\uFEFF';
   const csv=bom+rows.map(r=>r.map(v=>{const s=String(v==null?'':v);return s.includes(',')||s.includes('"')||s.includes('\n')?`"${s.replace(/"/g,'""')}"`:s;}).join(',')).join('\n');
@@ -1256,7 +1604,7 @@ renderRecBtns();
 renderOrdersHTML();
 renderOpCostsList();
 populateMonthSelects();
-// Auth check on load
+renderLoginScreen();
 initAuth();
 </script>
 </body>
