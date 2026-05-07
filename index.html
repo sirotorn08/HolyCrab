@@ -291,7 +291,7 @@ textarea{resize:vertical;min-height:50px;line-height:1.5}
         <div><div style="font-size:11px;color:#73726c;margin-bottom:3px">ประเภท</div>
           <select id="inv-type" style="width:100%">
             <option value="initial">เงินลงทุนเริ่มต้น</option>
-            <option value="topup">เติมเงินเพิ่ม</option>
+            <option value="topup">ลงทุนเพิ่ม</option>
             <option value="withdraw">ถอนเงิน</option>
           </select></div>
       </div>
@@ -428,12 +428,9 @@ textarea{resize:vertical;min-height:50px;line-height:1.5}
       <input type="date" id="filter-from" onchange="renderCustomers()" style="flex:1">
       <input type="date" id="filter-to" onchange="renderCustomers()" style="flex:1">
     </div>
-    <div style="position:relative;margin-bottom:10px">
-      <input type="text" list="cust-prod-list" id="filter-prod-input"
-        placeholder="สินค้าทั้งหมด (พิมพ์หรือเลือก) ▼"
-        oninput="renderCustomers()" onchange="renderCustomers()">
-      <datalist id="cust-prod-list"></datalist>
-    </div>
+    <select id="filter-prod-input" onchange="renderCustomers()" style="margin-bottom:10px;width:100%">
+      <option value="">สินค้าทั้งหมด</option>
+    </select>
     <div id="cust-list"></div>
   </div>
 </div>
@@ -447,6 +444,8 @@ textarea{resize:vertical;min-height:50px;line-height:1.5}
       <select id="dash-month" onchange="renderDash()"></select>
       <button class="yr-btn" onclick="changeYear(1)">›</button>
     </div>
+    <!-- CURRENT STATUS BANNER -->
+    <div id="dash-status-banner" style="margin-bottom:10px"></div>
     <div id="dash-pill"></div>
     <div class="metrics" id="dash-metrics"></div>
     <div id="dash-cost-detail"></div>
@@ -875,8 +874,8 @@ function nav(p){
   if(p==='staff'){initStaffPage();}
   if(p==='record'){renderRecBtns();renderOrders();renderOpCostsList();laborQuickItems=[];renderLaborQuickList();}
   if(p==='purchase'){initPurDate();renderPurchaseList();}
-  if(p==='customers'){populateFilterProd();renderCustomers();}
-  if(p==='dashboard') renderDash();
+  if(p==='customers'){populateFilterProd();renderCustomers();renderCustRevenueStatus();}
+  if(p==='dashboard'){renderDash();renderDashStatusBanner();}
   if(p==='history'){populateMonthSelects();renderHistory();}
 }
 
@@ -940,42 +939,117 @@ function renderProdSetup(){
   document.getElementById('prod-list').innerHTML=prods.map((p,i)=>`
     <div style="background:#f5f5f0;border-radius:11px;padding:11px 12px;margin-bottom:8px">
       <div style="display:flex;gap:7px;align-items:center;margin-bottom:8px">
-        <input type="text" value="${p.name}" placeholder="ชื่อสินค้า" style="flex:1;font-weight:500" oninput="updProd(${i},'name',this.value)">
+        <input type="text" value="${p.name}" placeholder="ชื่อสินค้า" style="flex:1;font-weight:500" onblur="updProd(${i},'name',this.value)" oninput="cacheProdVal(${i},'name',this.value)">
         <button class="btn-del" onclick="delProd(${i})">×</button>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-bottom:7px">
         <div>
           <div style="font-size:10px;color:#73726c;margin-bottom:3px">หน่วยนับ (Unit)</div>
-          <input type="text" value="${p.unit||'แพ็ก'}" placeholder="เช่น แพ็ก, กล่อง, กก." oninput="updProd(${i},'unit',this.value)">
+          <select onchange="updProd(${i},'unit',this.value)" style="width:100%">
+            <option value="แพ็ก"${(p.unit||'แพ็ก')==='แพ็ก'?' selected':''}>แพ็ก (Pack)</option>
+            <option value="กล่อง"${p.unit==='กล่อง'?' selected':''}>กล่อง (Box)</option>
+            <option value="ถุง"${p.unit==='ถุง'?' selected':''}>ถุง (Bag)</option>
+            <option value="กระป๋อง"${p.unit==='กระป๋อง'?' selected':''}>กระป๋อง (Can)</option>
+            <option value="กระปุก"${p.unit==='กระปุก'?' selected':''}>กระปุก (Jar)</option>
+            <option value="กก."${p.unit==='กก.'?' selected':''}>กก. (Kilogram)</option>
+            <option value="กรัม"${p.unit==='กรัม'?' selected':''}>กรัม (Gram)</option>
+            <option value="ชิ้น"${p.unit==='ชิ้น'?' selected':''}>ชิ้น (Piece)</option>
+            <option value="หน่วย"${p.unit==='หน่วย'?' selected':''}>หน่วย (Unit)</option>
+          </select>
         </div>
         <div>
           <div style="font-size:10px;color:#73726c;margin-bottom:3px">ปริมาณต่อหน่วย</div>
           <div style="display:flex;gap:5px;align-items:center">
-            <input type="number" value="${p.packSize||''}" placeholder="เช่น 500" min="0" style="flex:1" oninput="updProd(${i},'packSize',parseFloat(this.value)||0)">
-            <input type="text" value="${p.packUnit||'กรัม'}" placeholder="กรัม" style="width:52px;text-align:center" oninput="updProd(${i},'packUnit',this.value)">
+            <input type="number" value="${p.packSize||''}" placeholder="เช่น 500" min="0" style="flex:1" onblur="updProd(${i},'packSize',parseFloat(this.value)||0)" oninput="cacheProdVal(${i},'packSize',parseFloat(this.value)||0)">
+            <input type="text" value="${p.packUnit||'กรัม'}" placeholder="กรัม" style="width:52px;text-align:center" onblur="updProd(${i},'packUnit',this.value)" oninput="cacheProdVal(${i},'packUnit',this.value)">
           </div>
         </div>
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:7px">
         <div><div style="font-size:10px;color:#73726c;margin-bottom:3px">ต้นทุน / ${p.unit||'หน่วย'} (฿)</div>
-          <input type="number" value="${p.cp||''}" placeholder="0" min="0" oninput="updProd(${i},'cp',parseFloat(this.value)||0)"></div>
+          <input type="number" value="${p.cp||''}" placeholder="0" min="0" onblur="updProd(${i},'cp',parseFloat(this.value)||0);updateProdProfitDisplay(${i})" oninput="cacheProdVal(${i},'cp',parseFloat(this.value)||0);updateProdProfitDisplay(${i})"></div>
         <div><div style="font-size:10px;color:#73726c;margin-bottom:3px">ราคาขาย / ${p.unit||'หน่วย'} (฿)</div>
-          <input type="number" value="${p.sp||''}" placeholder="0" min="0" oninput="updProd(${i},'sp',parseFloat(this.value)||0)"></div>
+          <input type="number" value="${p.sp||''}" placeholder="0" min="0" onblur="updProd(${i},'sp',parseFloat(this.value)||0);updateProdProfitDisplay(${i})" oninput="cacheProdVal(${i},'sp',parseFloat(this.value)||0);updateProdProfitDisplay(${i})"></div>
       </div>
-      ${p.cp>0&&p.sp>0?`<div style="margin-top:7px;padding-top:7px;border-top:1px solid #e8e6e0">
-        <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:3px">
+      ${p.cp>0&&p.sp>0?`<div id="prod-profit-${i}" style="margin-top:7px;padding-top:7px;border-top:1px solid #e8e6e0">
+        <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px">
           <span style="color:#73726c">กำไร / ${p.unit||'หน่วย'}</span>
           <strong style="color:${p.sp-p.cp>=0?'#3b6d11':'#a32d2d'}">${fmt(p.sp-p.cp)} (${p.sp>0?Math.round((p.sp-p.cp)/p.sp*100):0}%)</strong>
         </div>
-        ${p.packSize>0?`<div style="display:flex;justify-content:space-between;font-size:11px">
+        ${p.packSize>0?`<div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:3px">
           <span style="color:#73726c">ราคา / 100${p.packUnit||'กรัม'}</span>
           <span style="color:#378ADD;font-weight:600">${fmt(p.sp/p.packSize*100)}</span>
         </div>`:''}
+        <div style="height:6px;background:#f1efe8;border-radius:3px;overflow:hidden;margin-top:4px">
+          <div style="height:100%;width:${Math.min(100,p.sp>0?Math.round(p.cp/p.sp*100):100)}%;background:${p.sp-p.cp>=0?'#E24B4A':'#a32d2d'};border-radius:3px"></div>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:10px;color:#b4b2a9;margin-top:2px">
+          <span>ต้นทุน ${p.sp>0?Math.round(p.cp/p.sp*100):0}%</span>
+          <span>กำไร ${p.sp>0?Math.round((p.sp-p.cp)/p.sp*100):0}%</span>
+        </div>
       </div>`:''}
+      ${p.cp>0&&p.sp<=0?`<div style="margin-top:6px;font-size:11px;color:#EF9F27">⚠️ ยังไม่ได้ตั้งราคาขาย</div>`:''}
+      ${p.sp>0&&p.cp<=0?`<div style="margin-top:6px;font-size:11px;color:#EF9F27">⚠️ ยังไม่ได้ตั้งต้นทุน</div>`:''}
       ${p.packSize>0?`<div style="margin-top:6px;background:#e8f1fb;border-radius:7px;padding:5px 9px;font-size:11px;color:#1a56a4">
         📦 1 ${p.unit||'หน่วย'} = ${p.packSize} ${p.packUnit||'กรัม'}
       </div>`:''}
     </div>`).join('');
+}
+
+// Track which input is focused to prevent re-render disruption
+let _prodFocused=false;
+function updProdDelay(i,k,v){
+  const p=getProds();
+  if(p[i])p[i][k]=v;
+  _products=p;
+  clearTimeout(_prodDelayTimer);
+  // Only re-render if no input is focused, otherwise wait longer
+  _prodDelayTimer=setTimeout(()=>{
+    if(!document.activeElement||!document.activeElement.closest('#prod-list')){
+      renderProdSetup();
+    } else {
+      // Input still focused - just update the profit display without full re-render
+      updateProdProfitDisplay(i);
+    }
+  },1200);
+}
+
+function updateProdProfitDisplay(i){
+  // Update only the profit section of a product card without re-rendering the whole list
+  const p=getProds()[i];if(!p)return;
+  const profitEl=document.getElementById('prod-profit-'+i);
+  if(!profitEl)return;
+  if(p.cp>0&&p.sp>0){
+    const profit=p.sp-p.cp;
+    const margin=Math.round(profit/p.sp*100);
+    const barW=Math.min(100,Math.round(p.cp/p.sp*100));
+    const color=profit>=0?'#3b6d11':'#a32d2d';
+    profitEl.style.display='block';
+    profitEl.innerHTML=`
+      <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px">
+        <span style="color:#73726c">กำไร / ${p.unit||'หน่วย'}</span>
+        <strong style="color:${color}">${fmt(profit)} (${margin}%)</strong>
+      </div>
+      ${p.packSize>0?`<div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:3px">
+        <span style="color:#73726c">ราคา / 100${p.packUnit||'กรัม'}</span>
+        <span style="color:#378ADD;font-weight:600">${fmt(p.sp/p.packSize*100)}</span>
+      </div>`:''}
+      <div style="height:6px;background:#f1efe8;border-radius:3px;overflow:hidden;margin-top:4px">
+        <div style="height:100%;width:${barW}%;background:#E24B4A;border-radius:3px"></div>
+      </div>
+      <div style="display:flex;justify-content:space-between;font-size:10px;color:#b4b2a9;margin-top:2px">
+        <span>ต้นทุน ${barW}%</span><span>กำไร ${margin}%</span>
+      </div>`;
+  } else {
+    profitEl.style.display='none';
+  }
+}
+
+
+// Update product in memory without re-rendering (prevents bounce while typing)
+function cacheProdVal(i,k,v){
+  const p=getProds();
+  if(p[i]){p[i][k]=v;_products=p;}
 }
 function updProd(i,k,v){const p=getProds();p[i][k]=v;_products=p;renderProdSetup();}
 function delProd(i){_products.splice(i,1);renderProdSetup();}
@@ -1413,7 +1487,7 @@ function renderInvestList(){
   const el=document.getElementById('invest-list');if(!el)return;
   const invs=getInvestments();
   if(!invs.length){el.innerHTML='<div class="empty" style="padding:10px">ยังไม่มีรายการลงทุน</div>';return;}
-  const typeLabel={initial:'เริ่มต้น',topup:'เติมเงิน',withdraw:'ถอนเงิน'};
+  const typeLabel={initial:'เริ่มต้น',topup:'ลงทุนเพิ่ม',withdraw:'ถอนเงิน'};
   const typeColor={initial:'#378ADD',topup:'#1D9E75',withdraw:'#E24B4A'};
   el.innerHTML=invs.map(inv=>{
     const total=inv.total||(inv.amount*2)||inv.amount;
@@ -2215,6 +2289,39 @@ function renderCompensation(){
     </div>`;
 }
 
+
+function renderCalcStatusBanner(){
+  const el=document.getElementById('calc-status-banner');if(!el)return;
+  const now=new Date();
+  const todayStr=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
+  const monthStr=todayStr.substring(0,7);
+  const tE=_entries.filter(e=>e.date===todayStr);
+  const mE=_entries.filter(e=>e.date.startsWith(monthStr));
+  if(!tE.length&&!mE.length){
+    el.innerHTML=`<div style="background:#f5f5f0;border-radius:10px;padding:9px 11px;text-align:center;font-size:12px;color:#b4b2a9">
+      กด 🔄 ซิงค์ เพื่อดูสถานะรายได้ปัจจุบัน
+    </div>`;
+    return;
+  }
+  const tPL=tE.reduce((s,e)=>s+e.pl,0);
+  const mPL=mE.reduce((s,e)=>s+e.pl,0);
+  const tRev=tE.reduce((s,e)=>s+e.totalRev,0);
+  const mRev=mE.reduce((s,e)=>s+e.totalRev,0);
+  el.innerHTML=`
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
+      <div style="background:${tPL>=0?'#eaf3de':'#fcebeb'};border-radius:10px;padding:9px 11px;border:1px solid ${tPL>=0?'#c0dd97':'#f7c1c1'}">
+        <div style="font-size:10px;color:#73726c;margin-bottom:1px">📅 วันนี้</div>
+        <div style="font-size:14px;font-weight:700">${fmt(tRev)}</div>
+        <div style="font-size:11px;font-weight:600;color:${tPL>=0?'#3b6d11':'#a32d2d'}">${tPL>=0?'กำไร':'ขาดทุน'} ${fmt(tPL)}</div>
+      </div>
+      <div style="background:${mPL>=0?'#eaf3de':'#fcebeb'};border-radius:10px;padding:9px 11px;border:1px solid ${mPL>=0?'#c0dd97':'#f7c1c1'}">
+        <div style="font-size:10px;color:#73726c;margin-bottom:1px">📆 เดือนนี้</div>
+        <div style="font-size:14px;font-weight:700">${fmt(mRev)}</div>
+        <div style="font-size:11px;font-weight:600;color:${mPL>=0?'#3b6d11':'#a32d2d'}">${mPL>=0?'กำไร':'ขาดทุน'} ${fmt(mPL)}</div>
+      </div>
+    </div>`;
+}
+
 function renderCalc(){
   const entries=_entries||[];
   const now=new Date();
@@ -2390,6 +2497,21 @@ function changeCalcMonth(dir){
 // ============================================================
 let purItems = [{id:'pi1', meatType:'', kg:'', priceKg:'', total:0}];
 
+
+function onMeatTypeChange(id, val){
+  const sel=document.getElementById('sel_'+id);
+  const txt=document.getElementById('txt_'+id);
+  if(val==='อื่นๆ(ระบุ)'){
+    if(sel)sel.style.display='none';
+    if(txt){txt.style.display='block';txt.value='';txt.focus();}
+    updPurItem(id,'meatType','',true); // noRender=true
+  } else {
+    if(txt)txt.style.display='none';
+    if(sel)sel.style.display='block';
+    updPurItem(id,'meatType',val); // re-render ok
+  }
+}
+
 function addPurItem(){
   purItems.push({id:'pi'+Date.now(), meatType:'', kg:'', priceKg:'', total:0});
   renderPurItems();
@@ -2399,13 +2521,26 @@ function removePurItem(id){
   purItems=purItems.filter(p=>p.id!==id);
   renderPurItems();
 }
-function updPurItem(id,key,val){
+
+let _purDelayTimer=null;
+function updPurItemDelay(id,key,val){
   const item=purItems.find(p=>p.id===id);
   if(!item)return;
   item[key]=val;
   if(item.kg&&item.priceKg) item.total=parseFloat(item.kg)*parseFloat(item.priceKg);
   else item.total=0;
-  renderPurItems();
+  updatePurTotal();
+  // Debounce re-render
+  clearTimeout(_purDelayTimer);
+  _purDelayTimer=setTimeout(()=>renderPurItems(),1000);
+}
+function updPurItem(id,key,val,noRender){
+  const item=purItems.find(p=>p.id===id);
+  if(!item)return;
+  item[key]=val;
+  if(item.kg&&item.priceKg) item.total=parseFloat(item.kg)*parseFloat(item.priceKg);
+  else item.total=0;
+  if(!noRender) renderPurItems();
   updatePurTotal();
 }
 function renderPurItems(){
@@ -2414,28 +2549,31 @@ function renderPurItems(){
   el.innerHTML=purItems.map(item=>`
     <div style="background:#fff;border-radius:9px;padding:9px 10px;margin-bottom:7px;border:1px solid #e8e6e0">
       <div style="display:flex;align-items:center;gap:7px;margin-bottom:7px">
-        <input type="text" list="meat-types-list-${item.id}" value="${item.meatType}"
-          placeholder="พิมพ์หรือเลือกประเภทเนื้อปู ▼"
-          style="flex:1;font-size:13px"
-          oninput="updPurItem('${item.id}','meatType',this.value)"
-          onchange="updPurItem('${item.id}','meatType',this.value)">
-        <datalist id="meat-types-list-${item.id}">
-          <option value="เนื้อปูก้าม"></option>
-          <option value="เนื้อปูไข่"></option>
-          <option value="เนื้อปูรวม"></option>
-          <option value="ไข่ปู/มันปู"></option>
-          <option value="เนื้อปูดำ"></option>
-          <option value="อื่นๆ"></option>
-        </datalist>
+        <div style="flex:1">
+          <select id="sel_${item.id}" style="width:100%;font-size:13px;display:${item.meatType==='อื่นๆ(ระบุ)'?'none':'block'}"
+            onchange="onMeatTypeChange('${item.id}',this.value)">
+            <option value="">-- ประเภทเนื้อปู --</option>
+            <option value="เนื้อปูก้าม"${item.meatType==='เนื้อปูก้าม'?' selected':''}>เนื้อปูก้าม</option>
+            <option value="เนื้อปูไข่"${item.meatType==='เนื้อปูไข่'?' selected':''}>เนื้อปูไข่</option>
+            <option value="เนื้อปูรวม"${item.meatType==='เนื้อปูรวม'?' selected':''}>เนื้อปูรวม</option>
+            <option value="ไข่ปู/มันปู"${item.meatType==='ไข่ปู/มันปู'?' selected':''}>ไข่ปู/มันปู</option>
+            <option value="เนื้อปูดำ"${item.meatType==='เนื้อปูดำ'?' selected':''}>เนื้อปูดำ</option>
+            <option value="อื่นๆ(ระบุ)">อื่นๆ (ระบุเอง)</option>
+          </select>
+          <input type="text" id="txt_${item.id}" value="${item.meatType==='อื่นๆ(ระบุ)'?'':item.meatType}"
+            placeholder="ระบุประเภท..."
+            style="width:100%;font-size:13px;display:${item.meatType&&item.meatType!=='เนื้อปูก้าม'&&item.meatType!=='เนื้อปูไข่'&&item.meatType!=='เนื้อปูรวม'&&item.meatType!=='ไข่ปู/มันปู'&&item.meatType!=='เนื้อปูดำ'&&item.meatType!==''?'block':'none'}"
+            oninput="updPurItem('${item.id}','meatType',this.value,true)">
+        </div>
         ${purItems.length>1?`<button class="btn-del" onclick="removePurItem('${item.id}')">×</button>`:''}
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px">
         <div><div style="font-size:10px;color:#73726c;margin-bottom:3px">น้ำหนัก (กก.)</div>
           <input type="number" value="${item.kg}" placeholder="0" min="0" step="0.1"
-            oninput="updPurItem('${item.id}','kg',this.value)"></div>
+            oninput="updPurItemDelay('${item.id}','kg',this.value)"></div>
         <div><div style="font-size:10px;color:#73726c;margin-bottom:3px">ราคา/กก. (฿)</div>
           <input type="number" value="${item.priceKg}" placeholder="0" min="0"
-            oninput="updPurItem('${item.id}','priceKg',this.value)"></div>
+            oninput="updPurItemDelay('${item.id}','priceKg',this.value)"></div>
         <div><div style="font-size:10px;color:#73726c;margin-bottom:3px">รวม (฿)</div>
           <input type="number" value="${item.total||''}" placeholder="0" min="0" readonly
             style="background:#f5f5f0;font-weight:600;color:${item.total>0?'#1a1a18':'#b4b2a9'}"></div>
@@ -2524,10 +2662,51 @@ async function deletePurchase(id){
 // ============================================================
 function populateFilterProd(){
   const prods=getProds();
-  const dl=document.getElementById('cust-prod-list');
-  if(dl) dl.innerHTML=prods.map(p=>`<option value="${p.name}"></option>`).join('');
+  const sel=document.getElementById('filter-prod-input');
+  if(sel){
+    const prev=sel.value;
+    sel.innerHTML='<option value="">สินค้าทั้งหมด</option>'+
+      prods.map(p=>`<option value="${p.name}">${p.name}</option>`).join('');
+    if(prev) sel.value=prev;
+  }
 }
+
+function renderCustRevenueStatus(){
+  const el=document.getElementById('cust-revenue-status');if(!el)return;
+  const now=new Date();
+  const todayStr=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
+  const monthStr=todayStr.substring(0,7);
+  const todayE=_entries.filter(e=>e.date===todayStr);
+  const monthE=_entries.filter(e=>e.date.startsWith(monthStr));
+  const tRev=todayE.reduce((s,e)=>s+e.totalRev,0);
+  const tPL=todayE.reduce((s,e)=>s+e.pl,0);
+  const mRev=monthE.reduce((s,e)=>s+e.totalRev,0);
+  const mPL=monthE.reduce((s,e)=>s+e.pl,0);
+  const totOrders=_entries.reduce((s,e)=>s+(e.orders?e.orders.length:0),0);
+  const tdc=tPL>=0?'#3b6d11':'#a32d2d';
+  const mdc=mPL>=0?'#3b6d11':'#a32d2d';
+  el.innerHTML=`
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px">
+      <div style="background:#f5f5f0;border-radius:10px;padding:9px;text-align:center">
+        <div style="font-size:10px;color:#73726c;margin-bottom:2px">รายได้วันนี้</div>
+        <div style="font-size:14px;font-weight:700">${fmt(tRev)}</div>
+        <div style="font-size:10px;font-weight:600;color:${tdc}">${tPL>=0?'กำไร':'ขาดทุน'} ${fmt(tPL)}</div>
+      </div>
+      <div style="background:#f5f5f0;border-radius:10px;padding:9px;text-align:center">
+        <div style="font-size:10px;color:#73726c;margin-bottom:2px">รายได้เดือนนี้</div>
+        <div style="font-size:14px;font-weight:700">${fmt(mRev)}</div>
+        <div style="font-size:10px;font-weight:600;color:${mdc}">${mPL>=0?'กำไร':'ขาดทุน'} ${fmt(mPL)}</div>
+      </div>
+      <div style="background:#f5f5f0;border-radius:10px;padding:9px;text-align:center">
+        <div style="font-size:10px;color:#73726c;margin-bottom:2px">ออเดอร์ทั้งหมด</div>
+        <div style="font-size:14px;font-weight:700">${totOrders}</div>
+        <div style="font-size:10px;color:#73726c">${_entries.length} วันที่บันทึก</div>
+      </div>
+    </div>`;
+}
+
 function renderCustomers(){
+  renderCustRevenueStatus();
   const q=(document.getElementById('cust-search').value||'').toLowerCase();
   const from=document.getElementById('filter-from').value;
   const to=document.getElementById('filter-to').value;
@@ -2602,6 +2781,39 @@ function getMonthEntries(ym){return _entries.filter(e=>e.date.startsWith(ym));}
 // ============================================================
 // DASHBOARD
 // ============================================================
+
+function renderDashStatusBanner(){
+  const el=document.getElementById('dash-status-banner');if(!el)return;
+  const now=new Date();
+  const todayStr=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
+  const monthStr=todayStr.substring(0,7);
+  const tE=_entries.filter(e=>e.date===todayStr);
+  const mE=_entries.filter(e=>e.date.startsWith(monthStr));
+  if(!tE.length&&!mE.length){
+    el.innerHTML=`<div style="background:#f5f5f0;border-radius:10px;padding:9px 11px;text-align:center;font-size:12px;color:#b4b2a9">
+      กด 🔄 ซิงค์ เพื่อดูสถานะรายได้ปัจจุบัน
+    </div>`;
+    return;
+  }
+  const tPL=tE.reduce((s,e)=>s+e.pl,0);
+  const mPL=mE.reduce((s,e)=>s+e.pl,0);
+  const tRev=tE.reduce((s,e)=>s+e.totalRev,0);
+  const mRev=mE.reduce((s,e)=>s+e.totalRev,0);
+  el.innerHTML=`
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
+      <div style="background:${tPL>=0?'#eaf3de':'#fcebeb'};border-radius:10px;padding:9px 11px;border:1px solid ${tPL>=0?'#c0dd97':'#f7c1c1'}">
+        <div style="font-size:10px;color:#73726c;margin-bottom:1px">📅 วันนี้</div>
+        <div style="font-size:15px;font-weight:700">${fmt(tRev)}</div>
+        <div style="font-size:11px;font-weight:600;color:${tPL>=0?'#3b6d11':'#a32d2d'}">${tPL>=0?'กำไร 🟢':'ขาดทุน 🔴'} ${fmt(tPL)}</div>
+      </div>
+      <div style="background:${mPL>=0?'#eaf3de':'#fcebeb'};border-radius:10px;padding:9px 11px;border:1px solid ${mPL>=0?'#c0dd97':'#f7c1c1'}">
+        <div style="font-size:10px;color:#73726c;margin-bottom:1px">📆 เดือนนี้</div>
+        <div style="font-size:15px;font-weight:700">${fmt(mRev)}</div>
+        <div style="font-size:11px;font-weight:600;color:${mPL>=0?'#3b6d11':'#a32d2d'}">${mPL>=0?'กำไร 🟢':'ขาดทุน 🔴'} ${fmt(mPL)}</div>
+      </div>
+    </div>`;
+}
+
 function setFreq(freq){
   dashFreq=freq;
   ['daily','weekly','monthly'].forEach(f=>{
@@ -2616,6 +2828,7 @@ function setFreq(freq){
 }
 
 function renderDash(){
+  renderDashStatusBanner();
   populateMonthSelects();
   const ym=document.getElementById('dash-month').value;if(!ym)return;
   const entries=getMonthEntries(ym);
