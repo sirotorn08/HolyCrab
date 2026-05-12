@@ -219,7 +219,15 @@ textarea{resize:vertical;min-height:50px;line-height:1.5}
           <input type="text" id="pur-supplier" placeholder="ตลาด, ซัพพลายเออร์..."></div>
       </div>
       <div style="font-size:11px;color:#73726c;margin-bottom:5px">โน้ต</div>
-      <input type="text" id="pur-note" placeholder="หมายเหตุ เช่น ปูสดมาก, ราคาขึ้น..." style="margin-bottom:10px">
+      <input type="text" id="pur-note" placeholder="หมายเหตุ เช่น ปูสดมาก, ราคาขึ้น..." style="margin-bottom:8px">
+      <div style="font-size:11px;color:#73726c;margin-bottom:5px">ใครจ่าย</div>
+      <select id="pur-paid-by" style="width:100%;margin-bottom:10px">
+        <option value="">-- เลือก --</option>
+        <option value="Jan">Jan</option>
+        <option value="Rit">Rit</option>
+        <option value="shop">บริษัท/Shop</option>
+        <option value="shared">แบ่งแล้ว</option>
+      </select>
 
       <!-- PURCHASE ITEMS -->
       <div style="font-size:10px;font-weight:700;color:#aaa;text-transform:uppercase;letter-spacing:.05em;margin-bottom:7px">รายการที่ซื้อ</div>
@@ -1204,7 +1212,8 @@ function renderOpCostsList(){
         <select onchange="opPaidBy['${f.id}']=this.value"
           style="font-size:12px;border:1.5px solid #e8e6e0;border-radius:8px;padding:7px 8px;font-family:inherit;background:#fff">
           <option value="">-- ใครจ่าย --</option>
-          ${getTeam().map(n=>`<option value="${n}" ${(opPaidBy['${f.id}']||''===n)?'selected':''}>${n}</option>`).join('')}
+          ${(_team.length?_team:USERS.map(u=>u.name)).map(n=>`<option value="${n}"${opPaidBy['${f.id}']===n?' selected':''}>${n}</option>`).join('')}
+          <option value="shop">บริษัท/Shop</option>
           <option value="shared">แบ่งแล้ว</option>
         </select>
       </div>
@@ -1495,6 +1504,15 @@ function initPurDate(){
   const v=`${t.getFullYear()}-${String(t.getMonth()+1).padStart(2,'0')}-${String(t.getDate()).padStart(2,'0')}`;
   const el=document.getElementById('pur-date');
   if(el){el.type='date';el.value=v;}
+  // Populate paid-by with real names
+  const purPaidSel=document.getElementById('pur-paid-by');
+  if(purPaidSel){
+    const team=_team.length?_team:USERS.map(u=>u.name);
+    purPaidSel.innerHTML='<option value="">-- เลือก --</option>'+
+      team.map(n=>`<option value="${n}">${n}</option>`).join('')+
+      '<option value="shop">บริษัท/Shop</option>'+
+      '<option value="shared">แบ่งแล้ว</option>';
+  }
   renderPurItems();
 }
 
@@ -2475,13 +2493,13 @@ function renderSharedFund(){
 
   // Sum up all advance payments from บันทึก records
   _entries.forEach(e=>{
-    // Op costs paid by someone
     OP_IDS.forEach(f=>{
       const amt=e.opCosts?e.opCosts[f.id]||0:0;
       if(amt<=0)return;
       const paidBy=e.opPaidBy?e.opPaidBy[f.id]||'':'';
-      if(paidBy&&paidBy!=='shared'&&owedMap[paidBy]!==undefined){
-        owedMap[paidBy]+=amt; // this person is owed this amount back
+      // Only track personal advance payments (not shop/shared)
+      if(paidBy&&paidBy!=='shared'&&paidBy!=='shop'&&owedMap[paidBy]!==undefined){
+        owedMap[paidBy]+=amt;
       }
     });
   });
@@ -2489,11 +2507,12 @@ function renderSharedFund(){
   _purchases.forEach(p=>{
     const amt=parseFloat(p.price)||0;
     const paidBy=p.paidBy||'';
-    if(amt>0&&paidBy&&paidBy!=='shared'&&owedMap[paidBy]!==undefined){
+    if(amt>0&&paidBy&&paidBy!=='shared'&&paidBy!=='shop'&&owedMap[paidBy]!==undefined){
       owedMap[paidBy]+=amt;
     }
   });
-  // Subtract already reimbursed
+  // Subtract already reimbursed per person (don't double-subtract)
+
   getWithdrawals().forEach(w=>{
     if(w.who&&owedMap[w.who]!==undefined) owedMap[w.who]-=w.amount;
     else if(w.who==='shared'){owedMap[name1]-=w.amount/2;owedMap[name2]-=w.amount/2;}
@@ -2517,10 +2536,9 @@ function renderSharedFund(){
         </div>
 
         <!-- WHO IS OWED REIMBURSEMENT -->
-        ${totalOwed>0?`
-        <div style="border-top:1px solid #e8e6e0;padding-top:10px">
+        <div style="border-top:1px solid #e8e6e0;padding-top:10px;margin-top:8px">
           <div style="font-size:10px;font-weight:700;color:#888780;text-transform:uppercase;margin-bottom:7px">💸 รอเบิกคืน (จ่ายล่วงหน้า)</div>
-          ${Object.entries(owedMap).filter(([,v])=>v>0).map(([name,owed])=>{
+          ${Object.values(owedMap).some(v=>v>0)?Object.entries(owedMap).filter(([,v])=>v>0).map(([name,owed])=>{
             const canReimburse=balance>=owed;
             const partnerShare=owed/2;
             return`<div style="background:#fff;border-radius:9px;padding:9px 11px;margin-bottom:6px">
@@ -2536,8 +2554,8 @@ function renderSharedFund(){
                     • อีกฝ่ายต้องโอนคืน ${fmt(Math.max(0,owed-Math.max(0,balance)))}`}
               </div>
             </div>`;
-          }).join('')}
-        </div>`:''}
+          }).join(''):`<div style="font-size:12px;color:#b4b2a9;padding:4px 0">ยังไม่มีรายการรอเบิกคืน<br><span style="font-size:11px">กรอก "ใครจ่าย" ในแท็บ บันทึก เพื่อติดตามได้</span></div>`}
+        </div>
       </div>`;
 
     // Update fund available preview in reimburse form
@@ -3527,13 +3545,15 @@ function renderHistory(){
         ${OP_IDS.filter(f=>(e.opCosts?e.opCosts[f.id]:0)>0).map(f=>{
           const amt=e.opCosts?e.opCosts[f.id]||0:0;
           const note=e.opCostNotes?e.opCostNotes[f.id]||'':'';
+          const paidBy=e.opPaidBy?e.opPaidBy[f.id]||'':'';
           const imgs=e.opEvidImgs?e.opEvidImgs[f.id]||[]:[]; 
           return`<div style="padding:4px 0;border-bottom:1px solid #f5f5f0">
             <div style="display:flex;justify-content:space-between;font-size:12px">
               <span style="color:#1a1a18;font-weight:500">${f.lbl}</span>
               <span style="font-weight:600;color:#a32d2d">-${fmt(amt)}</span>
             </div>
-            ${note?`<div style="font-size:11px;color:#73726c;margin-top:2px;font-style:italic">📝 ${note}</div>`:''}
+            ${paidBy?`<div style="font-size:11px;color:#378ADD;margin-bottom:1px">💳 จ่ายโดย: <strong>${paidBy}</strong>${paidBy!=="shared"&&paidBy!=="shop"?` · รอเบิกคืน ${fmt(amt)}`:""}</div>`:""}
+            ${note?`<div style="font-size:12px;color:#1a1a18;margin-top:2px">📝 ${note}</div>`:""}
             ${imgs.length>0?`<div class="thumb-row" style="margin-top:4px">${imgs.map(img=>`<img class="thumb" src="${img.src||img}" onclick="openLB('${img.src||img}')">`).join('')}</div>`:''}
           </div>`;
         }).join('')}
