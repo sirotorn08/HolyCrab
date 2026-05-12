@@ -3615,7 +3615,25 @@ function openEdit(date){
     </div>
     <div class="edit-sec">
       <div class="edit-sec-title">ต้นทุนดำเนินงาน</div>
-      ${OP_IDS.map(f=>`<div class="edit-field"><label>${f.lbl}</label><input type="number" id="ed_${f.id}" value="${entry.opCosts?entry.opCosts[f.id]||0:0}" min="0"></div>`).join('')}
+      ${OP_IDS.map(f=>`
+        <div style="background:#fff;border-radius:8px;padding:8px 10px;margin-bottom:6px;border:1px solid #e8e6e0">
+          <div style="font-size:12px;font-weight:600;color:#1a1a18;margin-bottom:5px">${f.lbl}</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:5px">
+            <div><div style="font-size:10px;color:#73726c;margin-bottom:2px">จำนวนเงิน (฿)</div>
+              <input type="number" id="ed_${f.id}" value="${entry.opCosts?entry.opCosts[f.id]||0:0}" min="0"></div>
+            <div><div style="font-size:10px;color:#73726c;margin-bottom:2px">ใครจ่าย</div>
+              <select id="ed_pb_${f.id}" style="width:100%;font-size:12px">
+                <option value="">-- เลือก --</option>
+                ${(_team.length?_team:USERS.map(u=>u.name)).map(n=>`<option value="${n}"${(entry.opPaidBy?entry.opPaidBy[f.id]:'')==n?' selected':''}>${n}</option>`).join('')}
+                <option value="shop"${(entry.opPaidBy?entry.opPaidBy[f.id]:'')==='shop'?' selected':''}>บริษัท/Shop</option>
+                <option value="shared"${(entry.opPaidBy?entry.opPaidBy[f.id]:'')==='shared'?' selected':''}>แบ่งแล้ว</option>
+              </select>
+            </div>
+          </div>
+          <div><div style="font-size:10px;color:#73726c;margin-bottom:2px">📝 โน้ต/หมายเหตุ</div>
+            <input type="text" id="ed_note_${f.id}" value="${entry.opCostNotes?entry.opCostNotes[f.id]||'':''}" placeholder="รายละเอียด เช่น Kerry 3 กล่อง, ใบเสร็จ#0045...">
+          </div>
+        </div>`).join('')}
     </div>`;
   document.getElementById('edit-modal').classList.add('show');
 }
@@ -3635,6 +3653,13 @@ async function saveEdit(){
     });
   });
   if(entry.opCosts)OP_IDS.forEach(f=>{entry.opCosts[f.id]=parseFloat(document.getElementById('ed_'+f.id)?.value)||0;});
+  // Save op cost notes and paidBy
+  if(!entry.opCostNotes)entry.opCostNotes={};
+  if(!entry.opPaidBy)entry.opPaidBy={};
+  OP_IDS.forEach(f=>{
+    entry.opCostNotes[f.id]=document.getElementById('ed_note_'+f.id)?.value||'';
+    entry.opPaidBy[f.id]=document.getElementById('ed_pb_'+f.id)?.value||'';
+  });
   const allItems=entry.orders.flatMap(o=>o.items);
   entry.totalRev=allItems.reduce((s,i)=>s+i.rev,0);
   entry.totalProdCost=allItems.reduce((s,i)=>s+i.cost,0);
