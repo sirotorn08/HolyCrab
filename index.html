@@ -1226,14 +1226,43 @@ function renderOpCostsList(){
     </div>`;
   }).join('');
 }
+
+// Cache for edit modal op cost values — survives re-renders
+let _editOpCache = {};
+
+function cacheEditOp(fid, key, val){
+  if(!_editOpCache[fid]) _editOpCache[fid] = {};
+  _editOpCache[fid][key] = val;
+}
+
+function restoreEditOpCache(){
+  Object.keys(_editOpCache).forEach(fid => {
+    const d = _editOpCache[fid];
+    const amtEl = document.getElementById('ed_' + fid);
+    const noteEl = document.getElementById('ed_note_' + fid);
+    const pbEl = document.getElementById('ed_pb_' + fid);
+    if(amtEl && d.amt !== undefined) amtEl.value = d.amt;
+    if(noteEl && d.note !== undefined) noteEl.value = d.note;
+    if(pbEl && d.pb !== undefined) pbEl.value = d.pb;
+  });
+}
+
 function handleOpImg(fid,input){
   Array.from(input.files).forEach(f=>{
     const r=new FileReader();
     r.onload=e=>{
       if(!opImgs[fid])opImgs[fid]=[];
       opImgs[fid].push({src:e.target.result,name:f.name});
-      // Only re-render if edit modal is NOT open
-      if(!document.getElementById('edit-modal').classList.contains('show')){
+      const editOpen=document.getElementById('edit-modal')?.classList.contains('show');
+      if(editOpen){
+        // Don't re-render, just update the thumb preview directly
+        const prevEl=document.getElementById('ed_prev_'+fid);
+        if(prevEl){
+          const imgs=opImgs[fid]||[];
+          prevEl.innerHTML=imgs.map((img,i)=>renderFileThumb(img.src||img,img.name||'',`delOpImg('${fid}',${i})`)).join('');
+        }
+        restoreEditOpCache();
+      } else {
         renderOpCostsList();
       }
     };
@@ -3627,9 +3656,9 @@ function openEdit(date){
           <div style="font-size:12px;font-weight:600;color:#1a1a18;margin-bottom:5px">${f.lbl}</div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:5px">
             <div><div style="font-size:10px;color:#73726c;margin-bottom:2px">จำนวนเงิน (฿)</div>
-              <input type="number" id="ed_${f.id}" value="${entry.opCosts&&entry.opCosts[f.id]?parseFloat(entry.opCosts[f.id].toFixed(2)):0}" min="0"></div>
+              <input type="number" id="ed_${f.id}" value="${entry.opCosts&&entry.opCosts[f.id]?parseFloat(entry.opCosts[f.id].toFixed(2)):0}" min="0" oninput="cacheEditOp('${f.id}','amt',this.value)"></div>
             <div><div style="font-size:10px;color:#73726c;margin-bottom:2px">ใครจ่าย</div>
-              <select id="ed_pb_${f.id}" style="width:100%;font-size:12px">
+              <select id="ed_pb_${f.id}" style="width:100%;font-size:12px" onchange="cacheEditOp('${f.id}','pb',this.value)">
                 <option value="">-- เลือก --</option>
                 ${(_team.length?_team:USERS.map(u=>u.name)).map(n=>`<option value="${n}"${(entry.opPaidBy?entry.opPaidBy[f.id]:'')==n?' selected':''}>${n}</option>`).join('')}
                 <option value="shop"${(entry.opPaidBy?entry.opPaidBy[f.id]:'')==='shop'?' selected':''}>บริษัท/Shop</option>
@@ -3638,7 +3667,7 @@ function openEdit(date){
             </div>
           </div>
           <div><div style="font-size:10px;color:#73726c;margin-bottom:2px">📝 โน้ต/หมายเหตุ</div>
-            <input type="text" id="ed_note_${f.id}" value="${entry.opCostNotes?entry.opCostNotes[f.id]||'':''}" placeholder="รายละเอียด เช่น Kerry 3 กล่อง, ใบเสร็จ#0045...">
+            <input type="text" id="ed_note_${f.id}" value="${entry.opCostNotes?entry.opCostNotes[f.id]||'':''}" placeholder="รายละเอียด เช่น Kerry 3 กล่อง, ใบเสร็จ#0045..." oninput="cacheEditOp('${f.id}','note',this.value)">
           </div>
         </div>`).join('')}
     </div>`;
@@ -3680,7 +3709,7 @@ async function saveEdit(){
     setSyncStatus('ok','ซิงค์แล้ว');closeEdit();populateMonthSelects();renderHistory();renderSharedFund();showToast('✅ แก้ไข & ซิงค์แล้ว!');
   } catch(e){setSyncStatus('err','ซิงค์ไม่ได้');showToast('⚠️ บันทึกไม่ได้');}
 }
-function closeEdit(){document.getElementById('edit-modal').classList.remove('show');editDate=null;}
+function closeEdit(){document.getElementById('edit-modal').classList.remove('show');editDate=null;_editOpCache={};}
 
 // ============================================================
 // DELETE
