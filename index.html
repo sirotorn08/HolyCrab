@@ -305,7 +305,13 @@ textarea{resize:vertical;min-height:50px;line-height:1.5}
       </div>
       <div><div style="font-size:11px;color:#73726c;margin-bottom:3px">โน้ต</div>
         <input type="text" id="inv-note" placeholder="เช่น ซื้ออุปกรณ์เริ่มต้น, เติมทุนรอบ 2..."></div>
-      <button class="btn btn-black" style="margin-top:8px" onclick="addInvestment()">+ บันทึกรายการลงทุน</button>
+      <div style="background:#fff;border-radius:9px;padding:8px 10px;border:1.5px dashed #d3d1c7;margin-bottom:8px">
+        <div style="font-size:11px;font-weight:600;color:#73726c;margin-bottom:5px">📎 หลักฐาน</div>
+        <button class="upload-btn" onclick="document.getElementById('inv-img-input').click()">📎 แนบสลิป/หลักฐาน</button>
+        <input type="file" id="inv-img-input" accept="image/*,.pdf,.jpg,.jpeg,.png" multiple onchange="handleInvImgs(this)">
+        <div style="display:flex;flex-wrap:wrap;gap:5px;margin-top:4px" id="inv-img-prev"></div>
+      </div>
+      <button class="btn btn-black" style="margin-top:0" onclick="addInvestment()">+ บันทึกรายการลงทุน</button>
     </div>
   </div>
 
@@ -320,12 +326,12 @@ textarea{resize:vertical;min-height:50px;line-height:1.5}
       <div style="display:flex;flex-direction:column;gap:7px;margin-bottom:7px">
         <div><div style="font-size:11px;color:#73726c;margin-bottom:3px">วันที่</div>
           <input type="date" id="withdraw-date"></div>
-        <div><div style="font-size:11px;color:#73726c;margin-bottom:3px">เบิกจาก (แหล่งเงิน)</div>
+        <div><div style="font-size:11px;color:#73726c;margin-bottom:3px">เบิกจาก</div>
           <select id="withdraw-source" style="width:100%">
-            <option value="fund">เงินกลาง / Shop Fund</option>
-            <option value="revenue">รายรับสะสม / Revenue</option>
-            <option value="profit">กำไรสะสม / Profit</option>
-          </select></div>
+            <option value="fund">เงินกลาง (ยอดคงเหลือบริษัท)</option>
+          </select>
+          <div id="fund-avail-preview" style="font-size:11px;color:#3b6d11;margin-top:3px"></div>
+        </div>
         <div><div style="font-size:11px;color:#73726c;margin-bottom:3px">เบิกให้ (ผู้รับเงิน)</div>
           <select id="withdraw-who" style="width:100%" onchange="previewWithdraw()">
             <option value="Jan">Jan</option>
@@ -1577,6 +1583,20 @@ function previewInvestSplit(){
   } else { el.style.display='none'; }
 }
 
+
+// Investment image handler
+let invImgs=[];
+function handleInvImgs(input){
+  Array.from(input.files).forEach(f=>{
+    const r=new FileReader();
+    r.onload=e=>{invImgs.push({src:e.target.result,name:f.name});renderInvImgPrev();};
+    r.readAsDataURL(f);
+  });input.value='';
+}
+function renderInvImgPrev(){
+  const el=document.getElementById('inv-img-prev');if(!el)return;
+  el.innerHTML=invImgs.map((f,i)=>renderFileThumb(f.src,f.name,`invImgs.splice(${i},1);renderInvImgPrev()`)).join('');
+}
 function addInvestment(){
   const date=document.getElementById('inv-date')?.value;
   const amount=parseFloat(document.getElementById('inv-amount')?.value)||0;
@@ -1592,6 +1612,7 @@ function addInvestment(){
   saveInvestments(inv);
   document.getElementById('inv-amount').value='';
   document.getElementById('inv-note').value='';
+  invImgs=[];renderInvImgPrev();
   const p=document.getElementById('inv-split-preview');if(p)p.style.display='none';
   renderInvestList();renderCalc();
   showToast('✅ บันทึกรายการลงทุนแล้ว');
@@ -1622,6 +1643,7 @@ function renderInvestList(){
       </div>
       <div style="font-size:11px;color:#73726c;margin-bottom:3px">${inv.date}${inv.note?' · '+inv.note:''}</div>
       <div style="font-size:11px;color:#378ADD">50/50 · แต่ละคน ${fmt(perPerson)}</div>
+      ${(inv.imgs||[]).length>0?`<div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:5px">${(inv.imgs||[]).map(f=>`<img src="${f.src||f}" style="width:44px;height:44px;object-fit:cover;border-radius:5px;cursor:pointer" onclick="openLB('${f.src||f}')">`).join('')}</div>`:''}
     </div>`;
   }).join('');
 }
@@ -1631,7 +1653,7 @@ function renderInvestList(){
 // ============================================================
 // INVESTMENT ATTACHMENT HANDLERS
 // ============================================================
-let invImgs=[];
+
 function handleInvImgs(input){
   Array.from(input.files).forEach(f=>{
     const r=new FileReader();
@@ -2445,21 +2467,84 @@ function renderSharedFund(){
   const {totalInvested,totalRev,totalCosts,totalWithdrawn,balance}=calcFundBalance();
   const balColor=balance>=0?'#3b6d11':'#a32d2d';
 
+  // Calculate who is owed reimbursement from advance payments
+  const team=getTeam();
+  const name1=team[0]||'Jan';
+  const name2=team[1]||'Rit';
+  const owedMap={[name1]:0,[name2]:0};
+
+  // Sum up all advance payments from บันทึก records
+  _entries.forEach(e=>{
+    // Op costs paid by someone
+    OP_IDS.forEach(f=>{
+      const amt=e.opCosts?e.opCosts[f.id]||0:0;
+      if(amt<=0)return;
+      const paidBy=e.opPaidBy?e.opPaidBy[f.id]||'':'';
+      if(paidBy&&paidBy!=='shared'&&owedMap[paidBy]!==undefined){
+        owedMap[paidBy]+=amt; // this person is owed this amount back
+      }
+    });
+  });
+  // Sum up advance purchase payments
+  _purchases.forEach(p=>{
+    const amt=parseFloat(p.price)||0;
+    const paidBy=p.paidBy||'';
+    if(amt>0&&paidBy&&paidBy!=='shared'&&owedMap[paidBy]!==undefined){
+      owedMap[paidBy]+=amt;
+    }
+  });
+  // Subtract already reimbursed
+  getWithdrawals().forEach(w=>{
+    if(w.who&&owedMap[w.who]!==undefined) owedMap[w.who]-=w.amount;
+    else if(w.who==='shared'){owedMap[name1]-=w.amount/2;owedMap[name2]-=w.amount/2;}
+  });
+
+  const totalOwed=Object.values(owedMap).reduce((s,v)=>s+Math.max(0,v),0);
+
   if(balEl){
     balEl.innerHTML=`
       <div style="background:${balance>=0?'#eaf3de':'#fcebeb'};border-radius:12px;padding:12px 14px;border:1px solid ${balance>=0?'#c0dd97':'#f7c1c1'}">
-        <div style="font-size:10px;font-weight:700;color:#888780;text-transform:uppercase;margin-bottom:8px">ยอดเงินกลางปัจจุบัน</div>
+        <div style="font-size:10px;font-weight:700;color:#888780;text-transform:uppercase;margin-bottom:8px">🏦 ยอดเงินกลางปัจจุบัน</div>
         <div style="font-size:32px;font-weight:900;color:${balColor};margin-bottom:6px">${fmt(balance)}</div>
-        <div style="font-size:11px;line-height:2;color:#73726c">
+        <div style="font-size:11px;line-height:2;color:#73726c;margin-bottom:8px">
           <div style="display:flex;justify-content:space-between"><span>+ เงินลงทุนรวม</span><strong style="color:#1a1a18">${fmt(totalInvested)}</strong></div>
           <div style="display:flex;justify-content:space-between"><span>+ รายรับสะสม</span><strong style="color:#3b6d11">${fmt(totalRev)}</strong></div>
           <div style="display:flex;justify-content:space-between"><span>− ค่าใช้จ่ายสะสม</span><strong style="color:#a32d2d">${fmt(totalCosts)}</strong></div>
           <div style="display:flex;justify-content:space-between;border-top:1px solid #e8e6e0;padding-top:4px"><span>− เบิกคืนรวม</span><strong style="color:#a32d2d">${fmt(totalWithdrawn)}</strong></div>
         </div>
-        <div style="font-size:11px;color:${balColor};font-weight:600;margin-top:6px">
+        <div style="font-size:11px;color:${balColor};font-weight:600;margin-bottom:10px">
           ${balance>=0?`✅ มีเงินคงเหลือ สามารถเบิกคืนได้อีก ${fmt(balance)}`:`⚠️ เงินกลางติดลบ ${fmt(Math.abs(balance))} — ต้องเติมเงิน`}
         </div>
+
+        <!-- WHO IS OWED REIMBURSEMENT -->
+        ${totalOwed>0?`
+        <div style="border-top:1px solid #e8e6e0;padding-top:10px">
+          <div style="font-size:10px;font-weight:700;color:#888780;text-transform:uppercase;margin-bottom:7px">💸 รอเบิกคืน (จ่ายล่วงหน้า)</div>
+          ${Object.entries(owedMap).filter(([,v])=>v>0).map(([name,owed])=>{
+            const canReimburse=balance>=owed;
+            const partnerShare=owed/2;
+            return`<div style="background:#fff;border-radius:9px;padding:9px 11px;margin-bottom:6px">
+              <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+                <span style="font-size:13px;font-weight:600;color:#1a1a18">👤 ${name}</span>
+                <span style="font-size:14px;font-weight:700;color:#a32d2d">รอคืน ${fmt(owed)}</span>
+              </div>
+              <div style="font-size:11px;color:#73726c;line-height:1.8">
+                ${canReimburse
+                  ?`✅ เงินกลางพอ — สามารถเบิกคืน <strong>${fmt(owed)}</strong> ได้เลย`
+                  :`⚠️ เงินกลางไม่พอ<br>
+                    • เบิกจากเงินกลางได้ ${fmt(Math.max(0,balance))}<br>
+                    • อีกฝ่ายต้องโอนคืน ${fmt(Math.max(0,owed-Math.max(0,balance)))}`}
+              </div>
+            </div>`;
+          }).join('')}
+        </div>`:''}
       </div>`;
+
+    // Update fund available preview in reimburse form
+    const previewEl=document.getElementById('fund-avail-preview');
+    if(previewEl) previewEl.innerHTML=balance>=0
+      ?`✅ เงินกลางคงเหลือ ${fmt(balance)}`
+      :`⚠️ เงินกลางติดลบ ${fmt(Math.abs(balance))}`;
   }
 
   // History list
