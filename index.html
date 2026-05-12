@@ -1229,7 +1229,14 @@ function renderOpCostsList(){
 function handleOpImg(fid,input){
   Array.from(input.files).forEach(f=>{
     const r=new FileReader();
-    r.onload=e=>{if(!opImgs[fid])opImgs[fid]=[];opImgs[fid].push({src:e.target.result,name:f.name});renderOpCostsList();};
+    r.onload=e=>{
+      if(!opImgs[fid])opImgs[fid]=[];
+      opImgs[fid].push({src:e.target.result,name:f.name});
+      // Only re-render if edit modal is NOT open
+      if(!document.getElementById('edit-modal').classList.contains('show')){
+        renderOpCostsList();
+      }
+    };
     r.readAsDataURL(f);
   });input.value='';
 }
@@ -3620,7 +3627,7 @@ function openEdit(date){
           <div style="font-size:12px;font-weight:600;color:#1a1a18;margin-bottom:5px">${f.lbl}</div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:5px">
             <div><div style="font-size:10px;color:#73726c;margin-bottom:2px">จำนวนเงิน (฿)</div>
-              <input type="number" id="ed_${f.id}" value="${entry.opCosts?entry.opCosts[f.id]||0:0}" min="0"></div>
+              <input type="number" id="ed_${f.id}" value="${entry.opCosts&&entry.opCosts[f.id]?parseFloat(entry.opCosts[f.id].toFixed(2)):0}" min="0"></div>
             <div><div style="font-size:10px;color:#73726c;margin-bottom:2px">ใครจ่าย</div>
               <select id="ed_pb_${f.id}" style="width:100%;font-size:12px">
                 <option value="">-- เลือก --</option>
@@ -3670,7 +3677,7 @@ async function saveEdit(){
   try {
     await gasPost({action:'saveEntry',data:entry});
     _entries.sort((a,b)=>a.date.localeCompare(b.date));
-    setSyncStatus('ok','ซิงค์แล้ว');closeEdit();populateMonthSelects();renderHistory();showToast('✅ แก้ไข & ซิงค์แล้ว!');
+    setSyncStatus('ok','ซิงค์แล้ว');closeEdit();populateMonthSelects();renderHistory();renderSharedFund();showToast('✅ แก้ไข & ซิงค์แล้ว!');
   } catch(e){setSyncStatus('err','ซิงค์ไม่ได้');showToast('⚠️ บันทึกไม่ได้');}
 }
 function closeEdit(){document.getElementById('edit-modal').classList.remove('show');editDate=null;}
