@@ -314,14 +314,20 @@ textarea{resize:vertical;min-height:50px;line-height:1.5}
     <div class="card-title">🏦 เงินกลาง — Shared Business Fund</div>
     <div id="shared-fund-balance" style="margin-bottom:12px"></div>
 
-    <!-- WITHDRAWAL FORM -->
+    <!-- REIMBURSE FORM -->
     <div style="background:#f8f7f4;border-radius:11px;padding:11px 12px;margin-bottom:10px">
-      <div style="font-size:10px;font-weight:700;color:#aaa;text-transform:uppercase;letter-spacing:.05em;margin-bottom:9px">💸 เบิกเงิน / Withdraw</div>
+      <div style="font-size:10px;font-weight:700;color:#aaa;text-transform:uppercase;letter-spacing:.05em;margin-bottom:9px">💸 เบิกคืน / Reimburse</div>
       <div style="display:flex;flex-direction:column;gap:7px;margin-bottom:7px">
         <div><div style="font-size:11px;color:#73726c;margin-bottom:3px">วันที่</div>
           <input type="date" id="withdraw-date"></div>
-        <div><div style="font-size:11px;color:#73726c;margin-bottom:3px">ผู้เบิก</div>
-          <select id="withdraw-who" style="width:100%">
+        <div><div style="font-size:11px;color:#73726c;margin-bottom:3px">เบิกจาก (แหล่งเงิน)</div>
+          <select id="withdraw-source" style="width:100%">
+            <option value="fund">เงินกลาง / Shop Fund</option>
+            <option value="revenue">รายรับสะสม / Revenue</option>
+            <option value="profit">กำไรสะสม / Profit</option>
+          </select></div>
+        <div><div style="font-size:11px;color:#73726c;margin-bottom:3px">เบิกให้ (ผู้รับเงิน)</div>
+          <select id="withdraw-who" style="width:100%" onchange="previewWithdraw()">
             <option value="Jan">Jan</option>
             <option value="Rit">Rit</option>
             <option value="shared">ทั้งคู่ (แบ่งเท่ากัน)</option>
@@ -332,9 +338,17 @@ textarea{resize:vertical;min-height:50px;line-height:1.5}
         <input type="number" id="withdraw-amount" placeholder="0" min="0" oninput="previewWithdraw()">
         <div id="withdraw-preview" style="font-size:11px;color:#378ADD;margin-top:3px;display:none"></div>
       </div>
-      <div><div style="font-size:11px;color:#73726c;margin-bottom:3px">โน้ต</div>
-        <input type="text" id="withdraw-note" placeholder="เช่น เบิกค่าแรงงาน, คืนเงินที่จ่ายไปก่อน..."></div>
-      <button class="btn btn-black" style="margin-top:8px" onclick="addWithdrawal()">💸 บันทึกการเบิกเงิน</button>
+      <div style="margin-bottom:7px">
+        <div style="font-size:11px;color:#73726c;margin-bottom:3px">โน้ต / เหตุผล</div>
+        <input type="text" id="withdraw-note" placeholder="เช่น คืนเงินค่าส่งที่ Jan จ่ายไปก่อน, เบิกจากกำไรรอบนี้..."></div>
+      <!-- Attachment -->
+      <div style="background:#fff;border-radius:9px;padding:8px 10px;border:1.5px dashed #d3d1c7;margin-bottom:8px">
+        <div style="font-size:11px;font-weight:600;color:#73726c;margin-bottom:5px">📎 หลักฐาน</div>
+        <button class="upload-btn" onclick="document.getElementById('withdraw-img-input').click()">📎 แนบสลิป/หลักฐาน</button>
+        <input type="file" id="withdraw-img-input" accept="image/*,.pdf,.jpg,.jpeg,.png" multiple onchange="handleWithdrawImgs(this)">
+        <div style="display:flex;flex-wrap:wrap;gap:5px;margin-top:4px" id="withdraw-img-prev"></div>
+      </div>
+      <button class="btn btn-black" style="margin-top:0" onclick="addWithdrawal()">💸 บันทึกการเบิกคืน</button>
     </div>
 
     <!-- SETTLEMENT FORM -->
@@ -343,26 +357,52 @@ textarea{resize:vertical;min-height:50px;line-height:1.5}
       <div style="display:flex;flex-direction:column;gap:7px;margin-bottom:7px">
         <div><div style="font-size:11px;color:#73726c;margin-bottom:3px">วันที่</div>
           <input type="date" id="settle-date"></div>
-        <div style="display:grid;grid-template-columns:1fr auto 1fr;gap:6px;align-items:center">
-          <div><div style="font-size:11px;color:#73726c;margin-bottom:3px">ผู้โอน (จาก)</div>
-            <select id="settle-from" style="width:100%">
+        <!-- Source of funds -->
+        <div><div style="font-size:11px;color:#73726c;margin-bottom:3px">ชำระจาก</div>
+          <select id="settle-source" style="width:100%" onchange="updateSettleFrom()">
+            <option value="personal">โอนระหว่างกัน (Jan ↔ Rit)</option>
+            <option value="fund">เงินกลาง / Shop Fund</option>
+          </select></div>
+        <!-- Personal transfer: from → to -->
+        <div id="settle-personal-fields">
+          <div style="display:grid;grid-template-columns:1fr auto 1fr;gap:6px;align-items:center">
+            <div><div style="font-size:11px;color:#73726c;margin-bottom:3px">ผู้โอน (จาก)</div>
+              <select id="settle-from" style="width:100%">
+                <option value="Jan">Jan</option>
+                <option value="Rit">Rit</option>
+              </select></div>
+            <div style="text-align:center;font-size:18px;margin-top:14px">→</div>
+            <div><div style="font-size:11px;color:#73726c;margin-bottom:3px">ผู้รับ (ถึง)</div>
+              <select id="settle-to" style="width:100%">
+                <option value="Rit">Rit</option>
+                <option value="Jan">Jan</option>
+              </select></div>
+          </div>
+        </div>
+        <!-- Fund payment: who receives from shop fund -->
+        <div id="settle-fund-fields" style="display:none">
+          <div><div style="font-size:11px;color:#73726c;margin-bottom:3px">ชำระให้ (ผู้รับคืน)</div>
+            <select id="settle-fund-to" style="width:100%">
               <option value="Jan">Jan</option>
               <option value="Rit">Rit</option>
-            </select></div>
-          <div style="text-align:center;font-size:18px;margin-top:14px">→</div>
-          <div><div style="font-size:11px;color:#73726c;margin-bottom:3px">ผู้รับ (ถึง)</div>
-            <select id="settle-to" style="width:100%">
-              <option value="Rit">Rit</option>
-              <option value="Jan">Jan</option>
+              <option value="both">ทั้งคู่ (แบ่งเท่ากัน)</option>
             </select></div>
         </div>
       </div>
       <div style="margin-bottom:7px">
         <div style="font-size:11px;color:#73726c;margin-bottom:3px">จำนวนเงิน (฿)</div>
         <input type="number" id="settle-amount" placeholder="0" min="0"></div>
-      <div><div style="font-size:11px;color:#73726c;margin-bottom:3px">โน้ต</div>
-        <input type="text" id="settle-note" placeholder="เช่น โอนชำระค่าใช้จ่ายเดือนพ.ค."></div>
-      <button class="btn btn-blue" style="margin-top:8px" onclick="addSettlement()">✅ บันทึกการชำระคืน</button>
+      <div style="margin-bottom:7px">
+        <div style="font-size:11px;color:#73726c;margin-bottom:3px">โน้ต / เหตุผล</div>
+        <input type="text" id="settle-note" placeholder="เช่น คืนเงินค่าส่งเดือนพ.ค., จ่ายจากกำไรรอบนี้"></div>
+      <!-- Attachment -->
+      <div style="background:#fff;border-radius:9px;padding:8px 10px;border:1.5px dashed #b3cef0;margin-bottom:8px">
+        <div style="font-size:11px;font-weight:600;color:#73726c;margin-bottom:5px">📎 หลักฐานการโอน</div>
+        <button class="upload-btn" onclick="document.getElementById('settle-img-input').click()">📎 แนบสลิป/หลักฐาน</button>
+        <input type="file" id="settle-img-input" accept="image/*,.pdf,.jpg,.jpeg,.png" multiple onchange="handleSettleImgs(this)">
+        <div style="display:flex;flex-wrap:wrap;gap:5px;margin-top:4px" id="settle-img-prev"></div>
+      </div>
+      <button class="btn btn-blue" style="margin-top:0" onclick="addSettlement()">✅ บันทึกการชำระคืน</button>
     </div>
 
     <!-- HISTORY -->
@@ -2281,38 +2321,85 @@ function previewWithdraw(){
   } else {el.style.display='none';}
 }
 
+
+// Settlement/Reimburse image handlers
+let settleImgs=[], withdrawImgs=[];
+
+function handleSettleImgs(input){
+  Array.from(input.files).forEach(f=>{
+    const r=new FileReader();
+    r.onload=e=>{settleImgs.push({src:e.target.result,name:f.name});renderSettleImgPrev();};
+    r.readAsDataURL(f);
+  });input.value='';
+}
+function renderSettleImgPrev(){
+  const el=document.getElementById('settle-img-prev');if(!el)return;
+  el.innerHTML=settleImgs.map((f,i)=>renderFileThumb(f.src,f.name,`settleImgs.splice(${i},1);renderSettleImgPrev()`)).join('');
+}
+
+function handleWithdrawImgs(input){
+  Array.from(input.files).forEach(f=>{
+    const r=new FileReader();
+    r.onload=e=>{withdrawImgs.push({src:e.target.result,name:f.name});renderWithdrawImgPrev();};
+    r.readAsDataURL(f);
+  });input.value='';
+}
+function renderWithdrawImgPrev(){
+  const el=document.getElementById('withdraw-img-prev');if(!el)return;
+  el.innerHTML=withdrawImgs.map((f,i)=>renderFileThumb(f.src,f.name,`withdrawImgs.splice(${i},1);renderWithdrawImgPrev()`)).join('');
+}
+
+function updateSettleFrom(){
+  const src=document.getElementById('settle-source')?.value;
+  const personal=document.getElementById('settle-personal-fields');
+  const fund=document.getElementById('settle-fund-fields');
+  if(personal) personal.style.display=src==='personal'?'block':'none';
+  if(fund) fund.style.display=src==='fund'?'block':'none';
+}
+
 function addWithdrawal(){
   const date=document.getElementById('withdraw-date')?.value;
   const who=document.getElementById('withdraw-who')?.value||'';
+  const source=document.getElementById('withdraw-source')?.value||'fund';
   const amount=parseFloat(document.getElementById('withdraw-amount')?.value)||0;
   const note=document.getElementById('withdraw-note')?.value||'';
   if(!date||amount<=0){showToast('กรุณากรอกวันที่และจำนวนเงิน');return;}
   const ws=getWithdrawals();
-  ws.push({id:'w'+Date.now(),date,who,amount,note,type:'withdraw'});
+  ws.push({id:'w'+Date.now(),date,who,source,amount,note,imgs:[...withdrawImgs],type:'reimburse'});
   ws.sort((a,b)=>b.date.localeCompare(a.date));
   saveWithdrawals(ws);
   document.getElementById('withdraw-amount').value='';
   document.getElementById('withdraw-note').value='';
+  withdrawImgs=[];renderWithdrawImgPrev();
   const p=document.getElementById('withdraw-preview');if(p)p.style.display='none';
   renderSharedFund();renderCalc();
-  showToast('✅ บันทึกการเบิกเงินแล้ว');
+  showToast('✅ บันทึกการเบิกคืนแล้ว');
 }
 
 function addSettlement(){
   const date=document.getElementById('settle-date')?.value;
-  const from=document.getElementById('settle-from')?.value||'';
-  const to=document.getElementById('settle-to')?.value||'';
+  const source=document.getElementById('settle-source')?.value||'personal';
   const amount=parseFloat(document.getElementById('settle-amount')?.value)||0;
   const note=document.getElementById('settle-note')?.value||'';
-  if(!date||amount<=0||from===to){showToast('กรุณากรอกข้อมูลให้ครบ');return;}
+  if(!date||amount<=0){showToast('กรุณากรอกวันที่และจำนวนเงิน');return;}
+  let from='',to='';
+  if(source==='personal'){
+    from=document.getElementById('settle-from')?.value||'';
+    to=document.getElementById('settle-to')?.value||'';
+    if(from===to){showToast('ผู้โอนและผู้รับต้องไม่ใช่คนเดียวกัน');return;}
+  } else {
+    from='Shop Fund';
+    to=document.getElementById('settle-fund-to')?.value||'';
+  }
   const ss=getSettlements();
-  ss.push({id:'s'+Date.now(),date,from,to,amount,note});
+  ss.push({id:'s'+Date.now(),date,from,to,source,amount,note,imgs:[...settleImgs]});
   ss.sort((a,b)=>b.date.localeCompare(a.date));
   saveSettlements(ss);
   document.getElementById('settle-amount').value='';
   document.getElementById('settle-note').value='';
+  settleImgs=[];renderSettleImgPrev();
   renderSharedFund();renderCalc();
-  showToast(`✅ บันทึกแล้ว — ${from} โอน ${fmt(amount)} ให้ ${to}`);
+  showToast(`✅ บันทึกแล้ว — ${from} → ${to} ${fmt(amount)}`);
 }
 
 function deleteWithdrawal(id){
@@ -2367,10 +2454,10 @@ function renderSharedFund(){
           <div style="display:flex;justify-content:space-between"><span>+ เงินลงทุนรวม</span><strong style="color:#1a1a18">${fmt(totalInvested)}</strong></div>
           <div style="display:flex;justify-content:space-between"><span>+ รายรับสะสม</span><strong style="color:#3b6d11">${fmt(totalRev)}</strong></div>
           <div style="display:flex;justify-content:space-between"><span>− ค่าใช้จ่ายสะสม</span><strong style="color:#a32d2d">${fmt(totalCosts)}</strong></div>
-          <div style="display:flex;justify-content:space-between;border-top:1px solid #e8e6e0;padding-top:4px"><span>− เบิกไปแล้ว</span><strong style="color:#a32d2d">${fmt(totalWithdrawn)}</strong></div>
+          <div style="display:flex;justify-content:space-between;border-top:1px solid #e8e6e0;padding-top:4px"><span>− เบิกคืนรวม</span><strong style="color:#a32d2d">${fmt(totalWithdrawn)}</strong></div>
         </div>
         <div style="font-size:11px;color:${balColor};font-weight:600;margin-top:6px">
-          ${balance>=0?`✅ มีเงินคงเหลือ สามารถเบิกได้อีก ${fmt(balance)}`:`⚠️ เงินกลางติดลบ ${fmt(Math.abs(balance))} — ต้องเติมเงิน`}
+          ${balance>=0?`✅ มีเงินคงเหลือ สามารถเบิกคืนได้อีก ${fmt(balance)}`:`⚠️ เงินกลางติดลบ ${fmt(Math.abs(balance))} — ต้องเติมเงิน`}
         </div>
       </div>`;
   }
@@ -2389,25 +2476,32 @@ function renderSharedFund(){
     histEl.innerHTML=`
       <div style="font-size:10px;font-weight:700;color:#888780;text-transform:uppercase;margin-bottom:8px">ประวัติล่าสุด</div>
       ${all.map(item=>{
+        const srcLabel={fund:'เงินกลาง',revenue:'รายรับ',profit:'กำไร',personal:'โอนระหว่างกัน'};
         if(item._type==='withdraw'){
-          return`<div style="display:flex;align-items:center;gap:8px;padding:9px 10px;background:#f5f5f0;border-radius:9px;margin-bottom:5px">
-            <div style="font-size:18px">💸</div>
-            <div style="flex:1">
-              <div style="font-size:12px;font-weight:600;color:#1a1a18">เบิกเงิน — ${item.who}</div>
-              <div style="font-size:11px;color:#73726c">${item.date}${item.note?' · '+item.note:''}</div>
+          return`<div style="padding:9px 10px;background:#f5f5f0;border-radius:9px;margin-bottom:5px">
+            <div style="display:flex;align-items:center;gap:8px">
+              <div style="font-size:18px">💸</div>
+              <div style="flex:1">
+                <div style="font-size:12px;font-weight:600;color:#1a1a18">เบิกคืน → ${item.who}</div>
+                <div style="font-size:11px;color:#73726c">${item.date} · จาก${srcLabel[item.source]||'เงินกลาง'}${item.note?' · '+item.note:''}</div>
+              </div>
+              <div style="font-size:14px;font-weight:700;color:#a32d2d">−${fmt(item.amount)}</div>
+              <button class="btn-del" onclick="deleteWithdrawal('${item.id}')">×</button>
             </div>
-            <div style="font-size:14px;font-weight:700;color:#a32d2d">−${fmt(item.amount)}</div>
-            <button class="btn-del" onclick="deleteWithdrawal('${item.id}')">×</button>
+            ${(item.imgs||[]).length>0?`<div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:5px">${(item.imgs||[]).map(f=>`<img src="${f.src||f}" style="width:44px;height:44px;object-fit:cover;border-radius:5px;cursor:pointer" onclick="openLB('${f.src||f}')">`).join('')}</div>`:''}
           </div>`;
         } else {
-          return`<div style="display:flex;align-items:center;gap:8px;padding:9px 10px;background:#f0f7ff;border-radius:9px;margin-bottom:5px;border:1px solid #d0e8ff">
-            <div style="font-size:18px">🤝</div>
-            <div style="flex:1">
-              <div style="font-size:12px;font-weight:600;color:#1a56a4">${item.from} → ${item.to}</div>
-              <div style="font-size:11px;color:#73726c">${item.date}${item.note?' · '+item.note:''}</div>
+          return`<div style="padding:9px 10px;background:#f0f7ff;border-radius:9px;margin-bottom:5px;border:1px solid #d0e8ff">
+            <div style="display:flex;align-items:center;gap:8px">
+              <div style="font-size:18px">🤝</div>
+              <div style="flex:1">
+                <div style="font-size:12px;font-weight:600;color:#1a56a4">${item.from} → ${item.to}</div>
+                <div style="font-size:11px;color:#73726c">${item.date}${item.source?` · ${srcLabel[item.source]||item.source}`:''}${item.note?' · '+item.note:''}</div>
+              </div>
+              <div style="font-size:14px;font-weight:700;color:#1a56a4">${fmt(item.amount)}</div>
+              <button class="btn-del" onclick="deleteSettlement('${item.id}')">×</button>
             </div>
-            <div style="font-size:14px;font-weight:700;color:#1a56a4">${fmt(item.amount)}</div>
-            <button class="btn-del" onclick="deleteSettlement('${item.id}')">×</button>
+            ${(item.imgs||[]).length>0?`<div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:5px">${(item.imgs||[]).map(f=>`<img src="${f.src||f}" style="width:44px;height:44px;object-fit:cover;border-radius:5px;cursor:pointer" onclick="openLB('${f.src||f}')">`).join('')}</div>`:''}
           </div>`;
         }
       }).join('')}`;
