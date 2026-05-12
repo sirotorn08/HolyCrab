@@ -761,7 +761,13 @@ let _touchTimer=null, lastSync=null;
 // ============================================================
 // STORAGE HELPERS (local cache)
 // ============================================================
-function fmt(n){const a=Math.abs(n);return(n<0?'-':'')+'฿'+Math.round(a).toLocaleString('th-TH')}
+function fmt(n){
+  if(n===null||n===undefined||isNaN(n)) return '฿0';
+  const a=Math.abs(n);
+  // Show up to 2 decimal places only if needed
+  const rounded=Number.isInteger(a)?a:parseFloat(a.toFixed(2));
+  return(n<0?'-':'')+'฿'+rounded.toLocaleString('th-TH',{minimumFractionDigits:0,maximumFractionDigits:2});
+}
 function uid(){return 'x'+Math.random().toString(36).slice(2,8)}
 function showToast(m,dur=2400){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),dur)}
 function openLB(src){document.getElementById('lb-img').src=src;document.getElementById('lightbox').classList.add('show')}
@@ -1070,6 +1076,7 @@ function renderOpCostsList(){
   el.innerHTML=OP_IDS.map(f=>{
     const imgs=opImgs[f.id]||[];
     const thumbs=imgs.map((item,i)=>renderFileThumb(item.src||item,item.name||'',`delOpImg('${f.id}',${i})`)).join('');
+    const existNote=opCostNotes[f.id]||'';
     return`<div style="background:#fff;border-radius:10px;padding:10px 11px;margin-bottom:8px;border:1px solid #eeecec">
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
         <div style="flex:1">
@@ -1080,6 +1087,10 @@ function renderOpCostsList(){
           style="width:94px;text-align:right;font-size:14px;font-weight:700"
           oninput="previewDay()">
       </div>
+      <input type="text" placeholder="📝 โน้ต / ใบเสร็จ / หมายเหตุ..."
+        value="${existNote}"
+        oninput="opCostNotes['${f.id}']=this.value"
+        style="width:100%;margin-bottom:6px;font-size:12px;padding:7px 10px;border:1.5px solid #e8e6e0;border-radius:8px;font-family:inherit;outline:none;color:#1a1a18">
       <button class="upload-btn" onclick="document.getElementById('opfile_${f.id}').click()">
         📎 แนบไฟล์/หลักฐาน${imgs.length>0?` <span style="background:#378ADD;color:#fff;border-radius:10px;padding:1px 7px;font-size:11px;margin-left:4px">${imgs.length} รูป</span>`:''}
       </button>
@@ -1349,7 +1360,8 @@ async function saveDay(){
 function resetDay(){
   laborQuickItems=[];renderLaborQuickList();
   orders=[{id:uid(),custName:'',custPhone:'',custFb:'',custLine:'',custAddr:'',custNote:'',payStatus:'paid',orderStatus:'processing',tracking:'',items:[{iid:uid(),prodId:'',qty:'',sp:'',cp:''}]}];
-  orderImgs={};opImgs={};opNotes={};selRec=-1;
+  orderImgs={};opImgs={};
+  opCostNotes={};opNotes={};selRec=-1;
   OP_IDS.forEach(f=>{const el=document.getElementById(f.id);if(el)el.value='';});
   document.getElementById('day-preview').innerHTML='';
   renderRecBtns();renderOrdersHTML();renderOpCostsList();initDate();
@@ -2951,17 +2963,31 @@ function renderHistory(){
             ${payBadge(o.payStatus)} <span>${ordLabel(o.orderStatus)}</span>
             ${o.tracking?`<span style="color:#b4b2a9">${o.tracking}</span>`:''}
           </div>
+          ${o.custNote?`<div style="font-size:11px;color:#73726c;padding:3px 0 2px;font-style:italic">📝 ${o.custNote}</div>`:''}
           ${o.items.map(i=>`<div class="os-row"><span style="color:#1a1a18">${i.name}</span><span>${i.qty}${i.unit}</span><span>${fmt(i.rev)}</span><span>${fmt(i.cost)}</span><span class="${i.pl>=0?'pos':'neg'}">${fmt(i.pl)}</span></div>`).join('')}
           ${(o.orderImgs||[]).length>0?`<div class="thumb-row">${(o.orderImgs||[]).map(f=>`<img class="thumb" src="${f.src||f}" onclick="openLB('${f.src||f}')">`).join('')}</div>`:''}
           ${o.orderEvidNote?`<div class="note-box" style="font-size:11px">📎 ${o.orderEvidNote}</div>`:''}
         </div>`).join('')}
       </div>`:''}
-      ${allOpImgs.length>0?`<div style="margin-top:6px;padding-top:6px;border-top:1px solid #f1efe8">
-        <div style="font-size:10px;color:#b4b2a9;font-weight:600;margin-bottom:4px">หลักฐานต้นทุน</div>
-        <div class="thumb-row">${allOpImgs.map(f=>`<img class="thumb" src="${f.src||f}" onclick="openLB('${f.src||f}')">`).join('')}</div>
-      </div>`:''}
-    </div>`;
-  }).join('');
+            <div style="margin-top:6px;padding-top:6px;border-top:1px solid #f1efe8">
+        <div style="font-size:10px;color:#b4b2a9;font-weight:600;margin-bottom:5px">ต้นทุนดำเนินงาน</div>
+        ${OP_IDS.filter(f=>(e.opCosts?e.opCosts[f.id]:0)>0).map(f=>{
+          const amt=e.opCosts?e.opCosts[f.id]||0:0;
+          const note=e.opCostNotes?e.opCostNotes[f.id]||'':'';
+          const imgs=e.opEvidImgs?e.opEvidImgs[f.id]||[]:[]; 
+          return`<div style="padding:4px 0;border-bottom:1px solid #f5f5f0">
+            <div style="display:flex;justify-content:space-between;font-size:12px">
+              <span style="color:#1a1a18;font-weight:500">${f.lbl}</span>
+              <span style="font-weight:600;color:#a32d2d">-${fmt(amt)}</span>
+            </div>
+            ${note?`<div style="font-size:11px;color:#73726c;margin-top:2px;font-style:italic">📝 ${note}</div>`:''}
+            ${imgs.length>0?`<div class="thumb-row" style="margin-top:4px">${imgs.map(img=>`<img class="thumb" src="${img.src||img}" onclick="openLB('${img.src||img}')">`).join('')}</div>`:''}
+          </div>`;
+        }).join('')}
+        ${allOpImgs.length>0&&OP_IDS.filter(f=>(e.opCosts?e.opCosts[f.id]:0)>0).length===0?
+          `<div class="thumb-row">${allOpImgs.map(f=>`<img class="thumb" src="${f.src||f}" onclick="openLB('${f.src||f}')"></div>`).join('')}`:''}
+      </div>
+    </div>`;  }).join('');
   const byM={};
   _entries.forEach(e=>{const k=e.date.substring(0,7);if(!byM[k])byM[k]={rev:0,cost:0,pl:0};byM[k].rev+=e.totalRev;byM[k].cost+=e.totalCost;byM[k].pl+=e.pl;});
   const keys=Object.keys(byM).sort().reverse();
