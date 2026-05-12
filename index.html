@@ -266,7 +266,10 @@ textarea{resize:vertical;min-height:50px;line-height:1.5}
     <!-- 4. P&L ANALYSIS -->
     <div id="calc-analysis" style="margin-bottom:8px"></div>
 
-    <!-- 5. COMPENSATION — last section -->
+    <!-- 5. PAYMENT SETTLEMENT -->
+    <div id="calc-settlement" style="margin-bottom:8px"></div>
+
+    <!-- 6. COMPENSATION — last section -->
     <div id="calc-compensation" style="margin-bottom:8px"></div>
 
     <!-- 6. PRICE SUGGESTIONS -->
@@ -304,6 +307,66 @@ textarea{resize:vertical;min-height:50px;line-height:1.5}
         <input type="text" id="inv-note" placeholder="เช่น ซื้ออุปกรณ์เริ่มต้น, เติมทุนรอบ 2..."></div>
       <button class="btn btn-black" style="margin-top:8px" onclick="addInvestment()">+ บันทึกรายการลงทุน</button>
     </div>
+  </div>
+
+  <!-- SHARED FUND CARD -->
+  <div class="card">
+    <div class="card-title">🏦 เงินกลาง — Shared Business Fund</div>
+    <div id="shared-fund-balance" style="margin-bottom:12px"></div>
+
+    <!-- WITHDRAWAL FORM -->
+    <div style="background:#f8f7f4;border-radius:11px;padding:11px 12px;margin-bottom:10px">
+      <div style="font-size:10px;font-weight:700;color:#aaa;text-transform:uppercase;letter-spacing:.05em;margin-bottom:9px">💸 เบิกเงิน / Withdraw</div>
+      <div style="display:flex;flex-direction:column;gap:7px;margin-bottom:7px">
+        <div><div style="font-size:11px;color:#73726c;margin-bottom:3px">วันที่</div>
+          <input type="date" id="withdraw-date"></div>
+        <div><div style="font-size:11px;color:#73726c;margin-bottom:3px">ผู้เบิก</div>
+          <select id="withdraw-who" style="width:100%">
+            <option value="Jan">Jan</option>
+            <option value="Rit">Rit</option>
+            <option value="shared">ทั้งคู่ (แบ่งเท่ากัน)</option>
+          </select></div>
+      </div>
+      <div style="margin-bottom:7px">
+        <div style="font-size:11px;color:#73726c;margin-bottom:3px">จำนวนเงิน (฿)</div>
+        <input type="number" id="withdraw-amount" placeholder="0" min="0" oninput="previewWithdraw()">
+        <div id="withdraw-preview" style="font-size:11px;color:#378ADD;margin-top:3px;display:none"></div>
+      </div>
+      <div><div style="font-size:11px;color:#73726c;margin-bottom:3px">โน้ต</div>
+        <input type="text" id="withdraw-note" placeholder="เช่น เบิกค่าแรงงาน, คืนเงินที่จ่ายไปก่อน..."></div>
+      <button class="btn btn-black" style="margin-top:8px" onclick="addWithdrawal()">💸 บันทึกการเบิกเงิน</button>
+    </div>
+
+    <!-- SETTLEMENT FORM -->
+    <div style="background:#f0f7ff;border-radius:11px;padding:11px 12px;margin-bottom:10px;border:1px solid #b3cef0">
+      <div style="font-size:10px;font-weight:700;color:#1a56a4;text-transform:uppercase;letter-spacing:.05em;margin-bottom:9px">🤝 บันทึกการชำระคืน / Settlement</div>
+      <div style="display:flex;flex-direction:column;gap:7px;margin-bottom:7px">
+        <div><div style="font-size:11px;color:#73726c;margin-bottom:3px">วันที่</div>
+          <input type="date" id="settle-date"></div>
+        <div style="display:grid;grid-template-columns:1fr auto 1fr;gap:6px;align-items:center">
+          <div><div style="font-size:11px;color:#73726c;margin-bottom:3px">ผู้โอน (จาก)</div>
+            <select id="settle-from" style="width:100%">
+              <option value="Jan">Jan</option>
+              <option value="Rit">Rit</option>
+            </select></div>
+          <div style="text-align:center;font-size:18px;margin-top:14px">→</div>
+          <div><div style="font-size:11px;color:#73726c;margin-bottom:3px">ผู้รับ (ถึง)</div>
+            <select id="settle-to" style="width:100%">
+              <option value="Rit">Rit</option>
+              <option value="Jan">Jan</option>
+            </select></div>
+        </div>
+      </div>
+      <div style="margin-bottom:7px">
+        <div style="font-size:11px;color:#73726c;margin-bottom:3px">จำนวนเงิน (฿)</div>
+        <input type="number" id="settle-amount" placeholder="0" min="0"></div>
+      <div><div style="font-size:11px;color:#73726c;margin-bottom:3px">โน้ต</div>
+        <input type="text" id="settle-note" placeholder="เช่น โอนชำระค่าใช้จ่ายเดือนพ.ค."></div>
+      <button class="btn btn-blue" style="margin-top:8px" onclick="addSettlement()">✅ บันทึกการชำระคืน</button>
+    </div>
+
+    <!-- HISTORY -->
+    <div id="fund-history"></div>
   </div>
 </div>
 
@@ -752,7 +815,7 @@ const DEFAULT_PRODS=[
 // LOCAL STATE (cache for offline use)
 // ============================================================
 let _entries=[], _purchases=[], _products=[], _team=[];
-let orders=[], selRec=-1, orderImgs={}, opImgs={}, opNotes={}, opCostNotes={}, purImgs=[];
+let orders=[], selRec=-1, orderImgs={}, opImgs={}, opNotes={}, opCostNotes={}, opPaidBy={}, purImgs=[];
 let dashYear=new Date().getFullYear(), editDate=null;
 let chRC=null, chPL=null, chProd=null;
 let dashFreq='daily';
@@ -876,7 +939,7 @@ function nav(p){
   const idx={record:0,purchase:1,products:2,customers:3,calc:4,staff:5,dashboard:6,history:7}[p];
   document.querySelectorAll('.topnav button')[idx].classList.add('active');
   if(p==='products'){renderTeamList();renderProdSetup();updateAdminVisibility();renderUserList();renderProductCostSuggestions();}
-  if(p==='calc'){renderCalc();initInvestPage();}
+  if(p==='calc'){renderCalc();initInvestPage();initFundPage();}
   if(p==='staff'){initStaffPage();}
   if(p==='record'){renderRecBtns();renderOrders();renderOpCostsList();laborQuickItems=[];renderLaborQuickList();}
   if(p==='purchase'){initPurDate();renderPurchaseList();}
@@ -1087,10 +1150,18 @@ function renderOpCostsList(){
           style="width:94px;text-align:right;font-size:14px;font-weight:700"
           oninput="previewDay()">
       </div>
-      <input type="text" placeholder="📝 โน้ต / ใบเสร็จ / หมายเหตุ..."
-        value="${existNote}"
-        oninput="opCostNotes['${f.id}']=this.value"
-        style="width:100%;margin-bottom:6px;font-size:12px;padding:7px 10px;border:1.5px solid #e8e6e0;border-radius:8px;font-family:inherit;outline:none;color:#1a1a18">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:6px">
+        <input type="text" placeholder="📝 โน้ต / หมายเหตุ..."
+          value="${existNote}"
+          oninput="opCostNotes['${f.id}']=this.value"
+          style="font-size:12px;padding:7px 10px;border:1.5px solid #e8e6e0;border-radius:8px;font-family:inherit;outline:none;color:#1a1a18">
+        <select onchange="opPaidBy['${f.id}']=this.value"
+          style="font-size:12px;border:1.5px solid #e8e6e0;border-radius:8px;padding:7px 8px;font-family:inherit;background:#fff">
+          <option value="">-- ใครจ่าย --</option>
+          ${getTeam().map(n=>`<option value="${n}" ${(opPaidBy['${f.id}']||''===n)?'selected':''}>${n}</option>`).join('')}
+          <option value="shared">แบ่งแล้ว</option>
+        </select>
+      </div>
       <button class="upload-btn" onclick="document.getElementById('opfile_${f.id}').click()">
         📎 แนบไฟล์/หลักฐาน${imgs.length>0?` <span style="background:#378ADD;color:#fff;border-radius:10px;padding:1px 7px;font-size:11px;margin-left:4px">${imgs.length} รูป</span>`:''}
       </button>
@@ -1358,7 +1429,7 @@ function resetDay(){
   laborQuickItems=[];renderLaborQuickList();
   orders=[{id:uid(),custName:'',custPhone:'',custFb:'',custLine:'',custAddr:'',custNote:'',payStatus:'paid',orderStatus:'processing',tracking:'',items:[{iid:uid(),prodId:'',qty:'',sp:'',cp:''}]}];
   orderImgs={};opImgs={};
-  opCostNotes={};opNotes={};selRec=-1;
+  opCostNotes={};opNotes={};opPaidBy={};selRec=-1;
   OP_IDS.forEach(f=>{const el=document.getElementById(f.id);if(el)el.value='';});
   document.getElementById('day-preview').innerHTML='';
   renderRecBtns();renderOrdersHTML();renderOpCostsList();initDate();
@@ -2172,6 +2243,307 @@ function renderAnalysis(monthEntries){
     </div>`;
 }
 
+
+
+// ============================================================
+// SHARED BUSINESS FUND (เงินกลาง)
+// ============================================================
+function getWithdrawals(){try{return JSON.parse(localStorage.getItem('hc_withdrawals')||'[]');}catch(e){return[];}}
+function saveWithdrawals(arr){localStorage.setItem('hc_withdrawals',JSON.stringify(arr));}
+function getSettlements(){try{return JSON.parse(localStorage.getItem('hc_settlements')||'[]');}catch(e){return[];}}
+function saveSettlements(arr){localStorage.setItem('hc_settlements',JSON.stringify(arr));}
+
+function initFundPage(){
+  const now=new Date();
+  const v=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
+  ['withdraw-date','settle-date'].forEach(id=>{const el=document.getElementById(id);if(el&&!el.value)el.value=v;});
+  // Populate selects with team names
+  const team=_team.length?_team:['Jan','Rit'];
+  ['withdraw-who','settle-from','settle-to'].forEach(id=>{
+    const sel=document.getElementById(id);if(!sel)return;
+    if(id==='withdraw-who'){
+      sel.innerHTML=team.map(n=>`<option value="${n}">${n}</option>`).join('')+`<option value="shared">ทั้งคู่ (แบ่งเท่ากัน)</option>`;
+    } else {
+      sel.innerHTML=team.map((n,i)=>`<option value="${n}"${(id==='settle-to'&&i===1)||id==='settle-from'&&i===0?'':''  }>${n}</option>`).join('');
+    }
+  });
+  renderSharedFund();
+}
+
+function previewWithdraw(){
+  const amt=parseFloat(document.getElementById('withdraw-amount')?.value)||0;
+  const who=document.getElementById('withdraw-who')?.value||'';
+  const el=document.getElementById('withdraw-preview');if(!el)return;
+  if(amt>0&&who==='shared'){
+    el.style.display='block';
+    const team=_team.length?_team:['Jan','Rit'];
+    el.innerHTML=`แต่ละคนได้รับ ${fmt(amt/2)} (${team[0]} ${fmt(amt/2)} + ${team[1]} ${fmt(amt/2)})`;
+  } else {el.style.display='none';}
+}
+
+function addWithdrawal(){
+  const date=document.getElementById('withdraw-date')?.value;
+  const who=document.getElementById('withdraw-who')?.value||'';
+  const amount=parseFloat(document.getElementById('withdraw-amount')?.value)||0;
+  const note=document.getElementById('withdraw-note')?.value||'';
+  if(!date||amount<=0){showToast('กรุณากรอกวันที่และจำนวนเงิน');return;}
+  const ws=getWithdrawals();
+  ws.push({id:'w'+Date.now(),date,who,amount,note,type:'withdraw'});
+  ws.sort((a,b)=>b.date.localeCompare(a.date));
+  saveWithdrawals(ws);
+  document.getElementById('withdraw-amount').value='';
+  document.getElementById('withdraw-note').value='';
+  const p=document.getElementById('withdraw-preview');if(p)p.style.display='none';
+  renderSharedFund();renderCalc();
+  showToast('✅ บันทึกการเบิกเงินแล้ว');
+}
+
+function addSettlement(){
+  const date=document.getElementById('settle-date')?.value;
+  const from=document.getElementById('settle-from')?.value||'';
+  const to=document.getElementById('settle-to')?.value||'';
+  const amount=parseFloat(document.getElementById('settle-amount')?.value)||0;
+  const note=document.getElementById('settle-note')?.value||'';
+  if(!date||amount<=0||from===to){showToast('กรุณากรอกข้อมูลให้ครบ');return;}
+  const ss=getSettlements();
+  ss.push({id:'s'+Date.now(),date,from,to,amount,note});
+  ss.sort((a,b)=>b.date.localeCompare(a.date));
+  saveSettlements(ss);
+  document.getElementById('settle-amount').value='';
+  document.getElementById('settle-note').value='';
+  renderSharedFund();renderCalc();
+  showToast(`✅ บันทึกแล้ว — ${from} โอน ${fmt(amount)} ให้ ${to}`);
+}
+
+function deleteWithdrawal(id){
+  if(!confirm('ลบรายการนี้?'))return;
+  saveWithdrawals(getWithdrawals().filter(w=>w.id!==id));
+  renderSharedFund();renderCalc();showToast('ลบแล้ว');
+}
+
+function deleteSettlement(id){
+  if(!confirm('ลบรายการนี้?'))return;
+  saveSettlements(getSettlements().filter(s=>s.id!==id));
+  renderSharedFund();renderCalc();showToast('ลบแล้ว');
+}
+
+function calcFundBalance(){
+  // Total investment
+  const invs=getInvestments();
+  const totalInvested=invs.reduce((s,i)=>{
+    const total=i.total||(i.amount*2)||i.amount;
+    return i.type==='withdraw'?s-total:s+total;
+  },0);
+
+  // Total revenue (all goes to shared fund)
+  const totalRev=_entries.reduce((s,e)=>s+e.totalRev,0);
+
+  // Total costs paid from shared fund (costs where paidBy=shared or unspecified)
+  const totalCosts=_entries.reduce((s,e)=>s+e.totalCost,0);
+
+  // Total withdrawals from fund
+  const withdrawals=getWithdrawals();
+  const totalWithdrawn=withdrawals.reduce((s,w)=>s+w.amount,0);
+
+  // Net fund balance
+  const balance=totalInvested+totalRev-totalCosts-totalWithdrawn;
+
+  return{totalInvested,totalRev,totalCosts,totalWithdrawn,balance};
+}
+
+function renderSharedFund(){
+  const balEl=document.getElementById('shared-fund-balance');
+  const histEl=document.getElementById('fund-history');
+
+  const {totalInvested,totalRev,totalCosts,totalWithdrawn,balance}=calcFundBalance();
+  const balColor=balance>=0?'#3b6d11':'#a32d2d';
+
+  if(balEl){
+    balEl.innerHTML=`
+      <div style="background:${balance>=0?'#eaf3de':'#fcebeb'};border-radius:12px;padding:12px 14px;border:1px solid ${balance>=0?'#c0dd97':'#f7c1c1'}">
+        <div style="font-size:10px;font-weight:700;color:#888780;text-transform:uppercase;margin-bottom:8px">ยอดเงินกลางปัจจุบัน</div>
+        <div style="font-size:32px;font-weight:900;color:${balColor};margin-bottom:6px">${fmt(balance)}</div>
+        <div style="font-size:11px;line-height:2;color:#73726c">
+          <div style="display:flex;justify-content:space-between"><span>+ เงินลงทุนรวม</span><strong style="color:#1a1a18">${fmt(totalInvested)}</strong></div>
+          <div style="display:flex;justify-content:space-between"><span>+ รายรับสะสม</span><strong style="color:#3b6d11">${fmt(totalRev)}</strong></div>
+          <div style="display:flex;justify-content:space-between"><span>− ค่าใช้จ่ายสะสม</span><strong style="color:#a32d2d">${fmt(totalCosts)}</strong></div>
+          <div style="display:flex;justify-content:space-between;border-top:1px solid #e8e6e0;padding-top:4px"><span>− เบิกไปแล้ว</span><strong style="color:#a32d2d">${fmt(totalWithdrawn)}</strong></div>
+        </div>
+        <div style="font-size:11px;color:${balColor};font-weight:600;margin-top:6px">
+          ${balance>=0?`✅ มีเงินคงเหลือ สามารถเบิกได้อีก ${fmt(balance)}`:`⚠️ เงินกลางติดลบ ${fmt(Math.abs(balance))} — ต้องเติมเงิน`}
+        </div>
+      </div>`;
+  }
+
+  // History list
+  if(histEl){
+    const ws=getWithdrawals();
+    const ss=getSettlements();
+    const all=[
+      ...ws.map(w=>({...w,_type:'withdraw'})),
+      ...ss.map(s=>({...s,_type:'settle'}))
+    ].sort((a,b)=>b.date.localeCompare(a.date)).slice(0,20);
+
+    if(!all.length){histEl.innerHTML='<div class="empty" style="padding:10px">ยังไม่มีรายการ</div>';return;}
+
+    histEl.innerHTML=`
+      <div style="font-size:10px;font-weight:700;color:#888780;text-transform:uppercase;margin-bottom:8px">ประวัติล่าสุด</div>
+      ${all.map(item=>{
+        if(item._type==='withdraw'){
+          return`<div style="display:flex;align-items:center;gap:8px;padding:9px 10px;background:#f5f5f0;border-radius:9px;margin-bottom:5px">
+            <div style="font-size:18px">💸</div>
+            <div style="flex:1">
+              <div style="font-size:12px;font-weight:600;color:#1a1a18">เบิกเงิน — ${item.who}</div>
+              <div style="font-size:11px;color:#73726c">${item.date}${item.note?' · '+item.note:''}</div>
+            </div>
+            <div style="font-size:14px;font-weight:700;color:#a32d2d">−${fmt(item.amount)}</div>
+            <button class="btn-del" onclick="deleteWithdrawal('${item.id}')">×</button>
+          </div>`;
+        } else {
+          return`<div style="display:flex;align-items:center;gap:8px;padding:9px 10px;background:#f0f7ff;border-radius:9px;margin-bottom:5px;border:1px solid #d0e8ff">
+            <div style="font-size:18px">🤝</div>
+            <div style="flex:1">
+              <div style="font-size:12px;font-weight:600;color:#1a56a4">${item.from} → ${item.to}</div>
+              <div style="font-size:11px;color:#73726c">${item.date}${item.note?' · '+item.note:''}</div>
+            </div>
+            <div style="font-size:14px;font-weight:700;color:#1a56a4">${fmt(item.amount)}</div>
+            <button class="btn-del" onclick="deleteSettlement('${item.id}')">×</button>
+          </div>`;
+        }
+      }).join('')}`;
+  }
+}
+
+// ============================================================
+// PAYMENT FLOW & SETTLEMENT CALCULATOR
+// ============================================================
+function renderPaymentFlow(){
+  const el=document.getElementById('calc-settlement');if(!el)return;
+  const team=getTeam();
+  const name1=team[0]||'Jan';
+  const name2=team[1]||'Rit';
+  const now=new Date();
+  const todayStr=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
+  const monthStr=todayStr.substring(0,7);
+
+  // Calculate for both daily and monthly
+  function calcFlow(entries, purchases){
+    const flow={[name1]:{paid:0,received:0},  [name2]:{paid:0,received:0}, shared:{in:0,out:0}};
+
+    // Revenue received (all goes to shared account)
+    entries.forEach(e=>{
+      (e.orders||[]).forEach(o=>{
+        const rev=o.items?o.items.reduce((s,i)=>s+i.rev,0):0;
+        const receiver=o.receivedBy||'shared';
+        if(receiver==='shared') flow.shared.in+=rev;
+        else if(flow[receiver]) flow[receiver].received+=rev;
+      });
+    });
+
+    // Operating costs paid by someone
+    entries.forEach(e=>{
+      OP_IDS.forEach(f=>{
+        const amt=e.opCosts?e.opCosts[f.id]||0:0;
+        if(amt<=0)return;
+        const paidBy=e.opPaidBy?e.opPaidBy[f.id]||'':'';
+        if(paidBy&&paidBy!=='shared'&&flow[paidBy]){
+          flow[paidBy].paid+=amt;
+        } else {
+          flow.shared.out+=amt/2; // split if no one specified
+        }
+      });
+    });
+
+    // Purchase costs paid by someone
+    purchases.forEach(p=>{
+      const amt=parseFloat(p.price)||0;
+      if(amt<=0)return;
+      const paidBy=p.paidBy||'';
+      if(paidBy&&paidBy!=='shared'&&flow[paidBy]){
+        flow[paidBy].paid+=amt;
+      } else if(paidBy!=='shared'){
+        // Unknown — split equally
+        flow[name1].paid+=amt/2;
+        flow[name2].paid+=amt/2;
+      }
+    });
+
+    // Total revenue from shared account — each person's share
+    const sharedRevEach=flow.shared.in/2;
+
+    // Net position for each person:
+    // What they're owed = their revenue share + what they paid on behalf of business
+    // What they owe = their half of shared costs
+    const net1=sharedRevEach+flow[name1].received+flow[name1].paid - flow.shared.out;
+    const net2=sharedRevEach+flow[name2].received+flow[name2].paid - flow.shared.out;
+
+    // Settlement: who owes who
+    const p1PaidTotal=flow[name1].paid;
+    const p2PaidTotal=flow[name2].paid;
+    const totalPaid=p1PaidTotal+p2PaidTotal;
+    const fairShare=totalPaid/2;
+    const owes1=fairShare-p1PaidTotal; // positive = owes, negative = is owed
+    const owes2=fairShare-p2PaidTotal;
+
+    return {flow, name1, name2, p1PaidTotal, p2PaidTotal, totalPaid, fairShare, owes1, owes2,
+            sharedRevEach, totalRevenue:flow.shared.in};
+  }
+
+  const todayE=_entries.filter(e=>e.date===todayStr);
+  const todayP=_purchases.filter(p=>p.date===todayStr);
+  const monthE=_entries.filter(e=>e.date.startsWith(monthStr));
+  const monthP=_purchases.filter(p=>p.date.startsWith(monthStr));
+
+  const daily=calcFlow(todayE,todayP);
+  const monthly=calcFlow(monthE,monthP);
+
+  function settlementCard(d, label){
+    if(d.totalPaid===0&&d.totalRevenue===0) return `<div style="font-size:12px;color:#b4b2a9;padding:6px 0">ยังไม่มีข้อมูล${label}</div>`;
+    const settleAmt=Math.abs(d.owes1);
+    const debtor=d.owes1>0?d.name1:d.name2;
+    const creditor=d.owes1>0?d.name2:d.name1;
+    const settled=settleAmt<1;
+    return`
+      <div style="background:#fff;border-radius:10px;padding:11px 12px;margin-bottom:8px">
+        <div style="font-size:11px;font-weight:700;color:#888780;text-transform:uppercase;margin-bottom:8px">${label}</div>
+        <div style="font-size:12px;line-height:2.2;margin-bottom:8px">
+          <div style="display:flex;justify-content:space-between;border-bottom:1px solid #f1efe8">
+            <span style="color:#73726c">รายได้รวม (บัญชีกลาง)</span><strong>${fmt(d.totalRevenue)}</strong></div>
+          <div style="display:flex;justify-content:space-between;border-bottom:1px solid #f1efe8">
+            <span style="color:#73726c">${d.name1} จ่ายแทนธุรกิจ</span>
+            <strong style="color:${d.p1PaidTotal>0?'#a32d2d':'#b4b2a9'}">${fmt(d.p1PaidTotal)}</strong></div>
+          <div style="display:flex;justify-content:space-between;border-bottom:1px solid #f1efe8">
+            <span style="color:#73726c">${d.name2} จ่ายแทนธุรกิจ</span>
+            <strong style="color:${d.p2PaidTotal>0?'#a32d2d':'#b4b2a9'}">${fmt(d.p2PaidTotal)}</strong></div>
+          <div style="display:flex;justify-content:space-between">
+            <span style="color:#73726c">แต่ละคนควรจ่ายเท่ากัน</span><strong>${fmt(d.fairShare)}</strong></div>
+        </div>
+        <div style="background:${settled?'#eaf3de':'#fff8e8'};border-radius:8px;padding:10px 12px;border:1px solid ${settled?'#c0dd97':'#f0e0a0'}">
+          ${settled
+            ?`<div style="font-size:13px;font-weight:700;color:#3b6d11;text-align:center">✅ เท่ากันแล้ว ไม่ต้องโอนให้กัน</div>`
+            :`<div style="font-size:13px;font-weight:700;color:#854f0b">
+                💸 ${debtor} ต้องโอนให้ ${creditor}
+              </div>
+              <div style="font-size:22px;font-weight:900;color:#a32d2d;margin:4px 0">${fmt(settleAmt)}</div>
+              <div style="font-size:11px;color:#73726c">เพื่อให้ค่าใช้จ่ายเท่ากันทั้งคู่</div>`}
+        </div>
+      </div>`;
+  }
+
+  el.innerHTML=`
+    <div style="background:#f5f5f0;border-radius:12px;padding:12px 14px">
+      <div style="font-size:10px;font-weight:700;color:#888780;text-transform:uppercase;margin-bottom:10px">
+        💸 การเงิน & การชำระคืน — Payment Settlement
+      </div>
+      ${settlementCard(daily,'📅 วันนี้')}
+      ${settlementCard(monthly,'📆 เดือนนี้')}
+      <div style="font-size:10px;color:#b4b2a9;margin-top:4px;line-height:1.6">
+        * คำนวณจากการกรอก "ใครจ่าย" ในรายการต้นทุนและการซื้อ<br>
+        * ถ้าไม่ได้ระบุใครจ่าย จะถือว่าแบ่งเท่ากัน
+      </div>
+    </div>`;
+}
+
 // ============================================================
 // COMPENSATION — 50/50 SPLIT + INVESTMENT ROI
 // ============================================================
@@ -2469,7 +2841,11 @@ function renderCalc(){
   renderAnalysis(monthEntries);
   renderPriceSuggestions();
 
-  // 5. COMPENSATION
+  // 5. PAYMENT SETTLEMENT
+  renderPaymentFlow();
+  renderSharedFund();
+
+  // 6. COMPENSATION
   renderCompensation();
 
   // 6. BREAK EVEN
@@ -2621,6 +2997,7 @@ async function savePurchase(){
     price:grandTotal,
     supplier:document.getElementById('pur-supplier')?.value||'',
     note:document.getElementById('pur-note')?.value||'',
+    paidBy:document.getElementById('pur-paid-by')?.value||'',
     imgs:[...purImgs]
   };
   setSyncStatus('syncing','บันทึก...');
