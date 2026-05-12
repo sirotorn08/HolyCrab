@@ -1096,10 +1096,7 @@ function renderOpCostsList(){
       </button>
       <input type="file" id="opfile_${f.id}" accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.csv,.txt,.png,.jpg,.jpeg" multiple onchange="handleOpImg('${f.id}',this)">
       ${thumbs?`<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:6px">${thumbs}</div>`:''}
-      <input type="text" id="opnote_${f.id}" value="${opNotes[f.id]||''}"
-        placeholder="โน้ต / เลขใบเสร็จ..."
-        style="font-size:12px;margin-top:4px"
-        oninput="opNotes['${f.id}']=this.value">
+
     </div>`;
   }).join('');
 }
